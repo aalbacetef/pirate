@@ -1,0 +1,25 @@
+
+logging:
+  dir: '~/logs' 
+
+handlers:
+  - endpoint: /webhooks/repo-a
+    auth:
+      token: 
+        - alpha
+        - beta
+      validator: list
+    name: "handle repo A's update"
+    run: |
+      PATH='/Users/arturo/.nix-profile/bin/:$PATH'
+      echo "body: $PIRATE_BODY"
+      echo "$PIRATE_HEADERS" | jq 'keys'
+
+
+  - endpoint: /another-path
+    auth:
+      validator: command
+      run: 'exit 1'
+    name: "new release"
+    run: | 
+      echo "body:" "$PIRATE_BODY"

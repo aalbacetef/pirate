@@ -1,0 +1,42 @@
+= pirate 
+
+== Introduction 
+
+Pirate is a webhooks taskrunner. It aims to satisfy the need of runningks based off of webhook events. 
+
+
+== Usage 
+
+Write your `ship.yml`:
+
+```yaml
+
+logging:
+  dir: '~/logs' 
+
+handlers:
+  - endpoint: /webhooks/repo-a
+    auth:
+      token: 
+        - alpha
+        - beta
+      validator: list
+    name: "handle repo A's update"
+    run: |
+      echo "body: $PIRATE_BODY"
+      echo "$PIRATE_HEADERS" 
+
+  - endpoint: /another-path
+    auth:
+      validator: command
+      run: echo ok
+    name: "new release"
+    run: | 
+      echo body: $PIRATE_BODY
+```
+
+Run it: 
+
+```bash
+pirate -config ./path/to/ship.yml
+```

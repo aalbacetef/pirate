@@ -1,0 +1,270 @@
+# output configuration options
+output:
+  formats: 
+    - format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+  uniq-by-line: true
+  path-prefix: ""
+  sort-results: false
+
+
+linters-settings:
+  cyclop:
+    max-complexity: 20
+    package-average: 5
+    skip-tests: true
+
+  depguard:
+    rules:
+      main:
+        allow:
+          - github.com/aalbacetef
+        deny: []
+  
+  dogsled:
+    max-blank-identifiers: 3
+
+  dupl:
+    threshold: 100
+
+  dupword:
+    keywords: []
+  
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    exclude-functions: 
+      - fmt.*
+      - encoding/json.Marshal
+      - encoding/json.MarshalIndent
+
+  errchkjson:
+    check-error-free-encoding: true
+    report-no-exported: false 
+
+  errorlint:
+    errorf: true
+    errorf-multi: true
+    asserts: true
+    comparison: true
+
+  exhaustive:
+    check:
+      - switch
+      - map
+    check-generated: true
+    default-signifies-exhaustive: true
+    ignore-enum-members: "Example.+"
+    ignore-enum-types: "Example.+"
+    explicit-exhaustive-map: true
+
+  exhaustruct:
+    include: []
+    exclude: []
+
+  funlen:
+    lines: 60
+    statements: 40
+    ignore-comments: true
+  
+  gci:
+    sections:
+      - standard
+      - default 
+      - prefix(github.com/aalbacetef)
+    skip-generated: false
+    custom-order: true
+
+  gocognit:
+    min-complexity: 15
+
+  goconst:
+    min-len: 3
+    min-occurrences: 3 
+    ignore-tests: true 
+    match-constant: true 
+   
+  gocritic: 
+    disable-all: true
+    enabled-checks:
+      - nestingReduce
+      - unnamedResult
+      - ruleguard
+    enabled-tags:
+      - diagnostic
+      - performance
+
+  godot:
+    scope: toplevel
+    exclude: []
+    period: true
+    capital: true
+
+  gosec:
+    includes: []
+    exclude-generated: false 
+    severity: low 
+    confidence: low 
+    concurrency: 2
+
+  gosimple:
+    checks: ["all"]
+
+  govet:
+    enable-all: true
+    disable:
+      - fieldalignment # rarely necessary
+    settings:
+      # analyzer name, run `go tool vet help` to see all analyzers
+      printf: 
+        # run `go tool vet help printf` to see available settings for `printf` analyzer
+        funcs: 
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Infof
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
+          - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
+
+  inamedparam:
+    skip-single-param: true
+
+  interfacebloat:
+    max: 5
+ 
+  ireturn:
+    allow: 
+      - error
+      - stdlib
+      - anon
+      - empty
+
+  lll:
+    line-length: 120
+    tab-width: 1
+
+  maintidx:
+    under: 20
+
+  mnd:
+    checks: 
+      - argument
+      - case
+      - condition 
+      - operation
+      - return
+      - assign
+
+  misspell: 
+    locale: US
+    ignore-words: []
+
+  nakedret:
+    max-func-lines: 20
+
+  nestif:
+    min-complexity: 3
+
+  varnamelen:
+    max-distance: 6
+    min-name-length: 3
+    check-receiver: false
+    check-return: false
+    check-type-param: false
+    ignore-type-assert-ok: false
+    ignore-map-index-ok: false
+    ignore-chan-recv-ok: false
+    ignore-names:
+      - err
+      - c
+      - l
+      - ch
+    ignore-decls:
+      - c echo.Context
+      - t *testing.T
+      - tt *testing.T 
+      - f *foo.Bar
+      - e error
+      - k int
+      - const C
+      - T any
+      - m map[string]int
+      - r io.Reader
+      - w io.Writer
+      - fd *os.File
+      - p []byte
+      - n int
+      - wc io.WriteCloser
+
+
+
+linters:
+  disable-all: true
+  enable:
+    - asasalint
+    - bidichk
+    - bodyclose
+    - containedctx
+    - contextcheck
+    - cyclop
+    - dogsled
+    - dupl
+    - dupword
+    - durationcheck
+    - errcheck
+    - errchkjson
+    - errname
+    - errorlint
+    - exhaustive
+    - forcetypeassert
+    - funlen
+    - gci
+    - gochecknoglobals
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - gosimple
+    - gosec
+    - govet
+    - grouper
+    - inamedparam
+    - ineffassign
+    - interfacebloat
+    - ireturn
+    - lll
+    - maintidx 
+    - misspell
+    - mnd
+    - nakedret
+    - nestif
+    - nilnil
+    - nolintlint
+    - nonamedreturns
+    - prealloc
+    - predeclared
+    - reassign
+    - revive
+    - staticcheck
+    - stylecheck
+    - tagalign
+    - tagliatelle
+    - thelper
+    - typecheck
+    - unconvert
+    - unused
+    - usestdlibvars
+    - unparam
+    - varnamelen
+    - whitespace
+    - wrapcheck
+    - wsl
+
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+  fix: false
+
