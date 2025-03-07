@@ -8,10 +8,26 @@ fmt: tidy
 mk-bin-dir:
 	mkdir -p bin/
 
+flags =
+runner ?= podman
+
 build: fmt mk-bin-dir 
-	go build -o bin/ ./cmd/pirate/ 
+	go build $(flags) -o bin/ ./cmd/pirate/ 
+
 
 test: fmt
 	go test -v ./...
 
 .PHONY: tidy fmt mk-bin-dir build test
+
+
+build-testing-img:
+	$(runner) build -t pirate:testing -f testing.Dockerfile .
+
+container_opts = 
+
+run-testing-img: build-testing-img
+	$(runner) run $(container_opts) --rm -it pirate:testing
+
+
+.PHONY: build-testing-img run-testing-img
