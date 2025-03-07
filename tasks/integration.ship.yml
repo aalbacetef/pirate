@@ -12,6 +12,6 @@ handlers:
       validator: list
     name: "handle repo A's update"
     run: |
-      echo -n "$PIRATE_BODY" > ~/body.json 
+      echo "$PIRATE_BODY" > ~/body.json 
       echo "$PIRATE_HEADERS" > ~/headers.json
 
