@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -25,11 +24,20 @@ func main() {
 		return
 	}
 
+	fmt.Println("running server")
+
 	srv, err := pirate.NewServer(cfg)
 	if err != nil {
-		log.Println("error:", err)
+		fmt.Println("error:", err)
+
+		if srv != nil {
+			srv.Close()
+		}
+
 		return
 	}
+
+	defer srv.Close()
 
 	r := chi.NewRouter()
 	r.Post("/*", srv.HandleRequest)
