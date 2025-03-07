@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Validator is the method of validation being used, either a command or a token from a list.
 type Validator string
 
 const (
@@ -16,6 +17,9 @@ const (
 	CommandValidator Validator = "command"
 )
 
+// Auth specifies the authentication of the incoming request.
+// If Validator is a ListValidator, then the token of the request must match a token of the list
+// If Validator is a CommandValidator, then the value of Run is executed and considered successful if exit code = 0.
 type Auth struct {
 	Token     []string  `yaml:"token"`
 	Validator Validator `yaml:"validator,omitempty"`
@@ -26,6 +30,7 @@ type Logging struct {
 	Dir string `yaml:"dir"`
 }
 
+// Handler waits for a webhook handler to come in and runs it if authenatication passes.
 type Handler struct {
 	Auth     Auth   `yaml:"auth,omitempty"`
 	Endpoint string `yaml:"endpoint"`
@@ -72,6 +77,7 @@ func Load(fpath string) (Config, Source, error) {
 	}
 }
 
+// Source is where the config was read from.
 type Source string
 
 const (
@@ -80,6 +86,7 @@ const (
 	LoadFromCurDir Source = "load-from-cur-dir"
 )
 
+// default variables.
 const (
 	ConfigEnvVar    = "PIRATE_CONFIG_PATH"
 	defaultFilename = "ship.yml"
