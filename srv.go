@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -19,21 +21,81 @@ type Server struct {
 	logger *slog.Logger
 
 	validationTimeout time.Duration
+
+	cleanup []func()
+}
+
+func (srv *Server) Close() {
+	n := len(srv.cleanup)
+	for k := range n {
+		fn := srv.cleanup[n-k-1]
+		fn()
+	}
+
+	srv.cleanup = nil
 }
 
 const (
 	defaultValidationTimeout = 5 * time.Second
 )
 
+// @TODO: the code for setting up logging file / dir should also handle the case
+// where we want to log to Stdout
 func NewServer(cfg Config) (*Server, error) {
+	loggingDir := strings.TrimSpace(cfg.Logging.Dir)
+	if strings.HasPrefix(loggingDir, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("could not get user home dir: %w", err)
+		}
+
+		loggingDir = filepath.Join(
+			homeDir,
+			strings.Replace(loggingDir, "~/", "", 1),
+		)
+	}
+
+	// @TODO: add timestamp to filename
+	loggingDir, err := filepath.Abs(loggingDir)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"could not make absolute filepath: %w",
+			err,
+		)
+	}
+
+	fpath := filepath.Join(loggingDir, "app.log")
+
+	// make directory if doesn't exist
+	if err := os.MkdirAll(loggingDir, 0644); err != nil {
+		return nil, fmt.Errorf(
+			"could not create logging directory (%s): %w",
+			cfg.Logging.Dir, err,
+		)
+	}
+
+	fd, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"could not create log file (%s): %w",
+			fpath, err,
+		)
+	}
+
+	closeFn := func() {
+		fd.Close()
+	}
+
 	srv := &Server{
 		cfg: cfg,
 		logger: slog.New(slog.NewJSONHandler(
-			os.Stdout,
+			fd,
 			&slog.HandlerOptions{Level: slog.LevelDebug.Level()},
 		)),
 		validationTimeout: defaultValidationTimeout,
 	}
+
+	srv.cleanup = append(srv.cleanup, closeFn)
 
 	return srv, nil
 }
