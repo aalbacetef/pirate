@@ -2,7 +2,7 @@
 
 == Introduction 
 
-Pirate is a webhooks taskrunner. It aims to satisfy the need of runningks based off of webhook events. 
+Pirate is a webhooks taskrunner. It aims to satisfy the need of running tasks based off of webhook events. 
 
 
 == Usage 
