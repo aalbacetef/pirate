@@ -33,6 +33,21 @@ trim_space() {
   echo -n "$input" | tr -s ' '
 }
 
+assert() {
+  local what
+  local want
+  local got
+
+  what="$1"
+  want="$2"
+  got="$3"
+
+  if test "$want" != "$got"; then
+    log "assert '$what': want '$want', got '$got'"
+    exit 1
+  fi
+}
+
 file_should_eq() {
   local fname
   local contents
@@ -41,14 +56,7 @@ file_should_eq() {
   contents="$(trim_space "$2")"
   trimmed="$(trim_space "$(cat "$fname")")"
 
-  if test "$contents" != "$trimmed"; then
-    log "error: file ($fname) contents differ"
-
-    log "got : $contents"
-    log "want: $trimmed"
-
-    exit 1
-  fi
+  assert "file content" "$contents" "$trimmed"
 }
 
 ## run the app in the background
@@ -62,18 +70,27 @@ fi
 
 log "app running with PID: $(pgrep 'pirate')"
 
-log "hitting first endpoint"
+##
+## Test: hit endpoint and ensure it returns a 200.
+##
+log "============================================"
+log "Test: it should execute a handler correctly"
+log "============================================"
 
-curl \
+CODE=$(curl \
+  -o /dev/null \
+  -w "%{http_code}" \
+  -s \
   -X POST \
   -H X-Authorization:alpha \
   -H X-My-Header:foobar \
   -H "Content-Type: application/json" \
   -H "User-Agent: integration-test" \
   -d '{"data": [1, 2, 3] }' \
-  "$BASE_URL/webhooks/first"
+  "$BASE_URL/webhooks/first")
 
-log "waiting 5s..."
+assert "status code" "200" "$CODE"
+
 sleep 5
 
 log "step: ensuring headers.json exists..."
@@ -91,3 +108,56 @@ log "ok"
 log "step: checking body.json matches what we expect..."
 file_should_eq ~/body.json "'{\"data\": [1, 2, 3] }'"
 log "ok"
+
+##
+## Test: ensure invalid enpoints return a 404
+##
+
+log "=========================================="
+log "test: ensure invalid enpoints return a 404"
+log "=========================================="
+
+CODE=$(curl \
+  -o /dev/null \
+  -w "%{http_code}" \
+  -s \
+  -X POST \
+  -H X-Authorization:alpha \
+  "$BASE_URL/missing")
+
+log "got status code: $CODE"
+assert "status code" "404" "$CODE"
+
+##
+## Test: ensure invalid auth returns a 404
+##
+
+log "======================================="
+log "test: ensure invalid auth returns a 404"
+log "======================================="
+
+CODE=$(curl \
+  -o /dev/null \
+  -w "%{http_code}" \
+  -s \
+  -X POST \
+  -H X-Authorization:invalid \
+  "$BASE_URL/webhooks/first")
+
+log "got status code: $CODE"
+assert "status code" "404" "$CODE"
+
+log "========================================="
+log "test: ensure invalid method returns a 405"
+log "========================================="
+
+CODE=$(curl \
+  -o /dev/null \
+  -w "%{http_code}" \
+  -s \
+  -X GET \
+  -H X-Authorization:invalid \
+  "$BASE_URL/webhooks/first")
+
+log "got status code: $CODE"
+assert "status code" "405" "$CODE"
