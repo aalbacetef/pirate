@@ -64,7 +64,6 @@ file_should_eq() {
 
 if ! pgrep 'pirate'; then
   log "failed to run pirate, exiting"
-  cat ~/app.log
   exit 1
 fi
 
@@ -87,7 +86,7 @@ CODE=$(curl \
   -H "Content-Type: application/json" \
   -H "User-Agent: integration-test" \
   -d '{"data": [1, 2, 3] }' \
-  "$BASE_URL/webhooks/first")
+  "$BASE_URL/webhooks/simple")
 
 assert "status code" "200" "$CODE"
 
@@ -142,10 +141,14 @@ CODE=$(curl \
   -s \
   -X POST \
   -H X-Authorization:invalid \
-  "$BASE_URL/webhooks/first")
+  "$BASE_URL/webhooks/simple")
 
 log "got status code: $CODE"
 assert "status code" "404" "$CODE"
+
+##
+## Test: ensure invalid method returns a 405
+##
 
 log "========================================="
 log "test: ensure invalid method returns a 405"
@@ -157,7 +160,55 @@ CODE=$(curl \
   -s \
   -X GET \
   -H X-Authorization:invalid \
-  "$BASE_URL/webhooks/first")
+  "$BASE_URL/webhooks/simple")
 
 log "got status code: $CODE"
 assert "status code" "405" "$CODE"
+
+##
+## Test: ensure validation fails if command validator fails
+##
+
+log "========================================================"
+log "test: ensure validation fails if command validator fails"
+log "========================================================"
+
+CODE=$(curl \
+  -o /dev/unll \
+  -w "%{http_code}" \
+  -s \
+  -X POST \
+  -H X-Authorization:ok \
+  "$BASE_URL/command/should-fail")
+
+log "got status code: $CODE"
+assert "status code" "404" "$CODE"
+
+##
+## Test: ensure validation succeeds if command validator succeeds
+##
+
+log "=============================================================="
+log "test: ensure validation succeeds if command validator succeeds"
+log "=============================================================="
+
+CODE=$(curl \
+  -o /dev/unll \
+  -w "%{http_code}" \
+  -s \
+  -X POST \
+  -H X-Authorization:ok \
+  "$BASE_URL/command/should-succeed")
+
+log "got status code: $CODE"
+assert "status code" "200" "$CODE"
+
+sleep 5 
+
+log "step: ensuring ~/command-succeeded.txt exists..."
+file_should_exist ~/command-succeeded.txt
+log "ok"
+
+log "step: checking ~/command-succeeded.txt matches what we expect..."
+file_should_eq ~/command-succeeded.txt "command succeeded"
+log "ok"

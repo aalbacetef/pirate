@@ -4,14 +4,33 @@ logging:
   dir: '~/logs' 
 
 handlers:
-  - endpoint: /webhooks/first
+  - endpoint: /webhooks/simple
+    name: "simple webhook handler"
     auth:
+      validator: list
       token: 
         - alpha
         - beta
-      validator: list
-    name: "handle repo A's update"
     run: |
       echo "$PIRATE_BODY" > ~/body.json 
       echo "$PIRATE_HEADERS" > ~/headers.json
+
+  - endpoint: '/command/should-fail'
+    name: 'command should fail'
+    auth:
+      validator: command
+      run: 'exit 1'
+    run:  |
+      echo "will never execute"
+
+  - endpoint: '/command/should-succeed'
+    name: command should succeed
+    auth:
+      validator: command
+      run: |
+        echo "starting validation"
+        echo "assuming validation has passed"
+    run: |
+      echo "command succeeded" > ~/command-succeeded.txt
+      echo "finished"
 
