@@ -1,101 +1,59 @@
 package pirate
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 )
 
-const (
-	DoTimeout    = 5 * time.Minute
-	tickInterval = 10 * time.Second
-)
+const tickInterval = 10 * time.Second
 
-// Do runs after a request has been validated.
-// @TODO: maybe enforce Content-Type: application/json ?
-// @TODO: add optional shell setting to config.
-// @TODO: add handler timeout setting.
-func (srv *Server) Do(h Handler, headers map[string]string, payload []byte) {
-	l := srv.logger.With(
-		"Fn", "srv.Do",
-		"handler", h.Name,
-	)
-
-	l.Info("starting handler")
-
-	buf := &bytes.Buffer{}
-
-	if err := json.NewEncoder(buf).Encode(headers); err != nil {
-		l.Error("could not encode headers", "error", err)
-		return
-	}
-
-	env := []string{
-		fmt.Sprintf("PIRATE_HEADERS=%s", buf.String()),
-		fmt.Sprintf("PIRATE_BODY='%s'", string(payload)),
-	}
-
-	file, err := os.CreateTemp("", "pirate-webhook-script-*")
+func runScript(ctx context.Context, fname, contents string, env []string, l *slog.Logger) error {
+	fd, err := os.CreateTemp("", fname)
 	if err != nil {
-		l.Error("could not create temp file", "error", err)
-		return
+		return fmt.Errorf("could not create script: %w", err)
 	}
 
-	name := file.Name()
+	name := fd.Name()
 
 	defer func() {
-		l.Info("cleaning up temp file", "name", name)
+		l.Debug("cleaning up temp file", "name", name)
 
 		if rmErr := os.Remove(name); rmErr != nil {
-			l.Error("could not clean up temp file", "error", rmErr, "filepath", name)
+			l.Error("could not clean up temp file", "error", rmErr, "name", name)
 			return
 		}
 
-		l.Info("done")
+		l.Debug("cleaned up temp file", "name", name)
 	}()
 
-	script := h.Run
-
-	scriptLen := len(script)
-
-	n, err := file.WriteString(script)
+	wroteBytes, err := fd.WriteString(contents)
 	if err != nil {
-		l.Error("could not write run lines to script", "error", err)
-		return
+		return fmt.Errorf("error writing script: %w", err)
 	}
 
-	if n != scriptLen {
-		l.Error("wrote insufficient number of bytes", "n", n, "want", scriptLen)
-		return
+	wantBytes := len([]byte(contents))
+
+	if wantBytes != wroteBytes {
+		return fmt.Errorf("expected %d bytes, wrote %d", wantBytes, wroteBytes)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), DoTimeout)
-	defer cancel()
+	fd.Close()
 
-	cmd := exec.CommandContext(
-		ctx,
-		"bash", name,
-	)
+	cmd := exec.CommandContext(ctx, "bash", name)
 	cmd.Env = env
 
-	stderr := newSafeBuffer()
-	stdout := newSafeBuffer()
+	stdout, stderr := newSafeBuffer(), newSafeBuffer()
 
-	cmd.Stderr = stderr
 	cmd.Stdout = stdout
-
-	l.Info("commencing execution")
+	cmd.Stderr = stderr
 
 	if err := cmd.Start(); err != nil {
-		l.Error("could not start command", "error", err)
-		return
+		return fmt.Errorf("could not start command: %w", err)
 	}
 
 	ticker := time.NewTicker(tickInterval)
@@ -116,29 +74,14 @@ func (srv *Server) Do(h Handler, headers map[string]string, payload []byte) {
 		code = 1
 
 		exitErr := &exec.ExitError{}
-
 		if errors.As(err, &exitErr) {
 			code = exitErr.ExitCode()
 		}
+
+		return fmt.Errorf("failed (exit code=%d): %w", code, err)
 	}
 
 	flush(stdout, stderr, l)
 
-	l.Info("execution finished", "code", code)
-}
-
-func flush(stdout, stderr *safeBuffer, l *slog.Logger) {
-	outStr := stdout.String()
-	errStr := stderr.String()
-
-	stdout.Reset()
-	stderr.Reset()
-
-	if len(strings.TrimSpace(outStr)) > 0 {
-		l.Info(outStr)
-	}
-
-	if len(strings.TrimSpace(errStr)) > 0 {
-		l.Error(errStr)
-	}
+	return nil
 }

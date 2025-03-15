@@ -1,14 +1,15 @@
 package pirate
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -37,6 +38,8 @@ func (srv *Server) Close() {
 
 const (
 	defaultValidationTimeout = 5 * time.Second
+	dirPerms                 = 0o744
+	filePerms                = 0o644
 )
 
 // @TODO: the code for setting up logging file / dir should also handle the case
@@ -67,14 +70,14 @@ func NewServer(cfg Config) (*Server, error) {
 	fpath := filepath.Join(loggingDir, "app.log")
 
 	// make directory if doesn't exist
-	if err := os.MkdirAll(loggingDir, 0644); err != nil {
+	if mkErr := os.MkdirAll(loggingDir, dirPerms); mkErr != nil {
 		return nil, fmt.Errorf(
 			"could not create logging directory (%s): %w",
-			cfg.Logging.Dir, err,
+			cfg.Logging.Dir, mkErr,
 		)
 	}
 
-	fd, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	fd, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, filePerms)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"could not create log file (%s): %w",
@@ -100,7 +103,7 @@ func NewServer(cfg Config) (*Server, error) {
 	return srv, nil
 }
 
-var HandlerNotFoundErr = errors.New("no matching handler was found")
+var ErrHandlerNotFound = errors.New("no matching handler was found")
 
 func (srv *Server) FindHandler(endpoint string) (Handler, error) {
 	for _, h := range srv.cfg.Handlers {
@@ -109,7 +112,7 @@ func (srv *Server) FindHandler(endpoint string) (Handler, error) {
 		}
 	}
 
-	return Handler{}, HandlerNotFoundErr
+	return Handler{}, ErrHandlerNotFound
 }
 
 // HandleRequest is the main entrypoint of the server. It will first check if the
@@ -122,7 +125,7 @@ func (srv *Server) HandleRequest(w http.ResponseWriter, req *http.Request) {
 	logger.Debug("checking matching handler...")
 
 	handler, err := srv.FindHandler(req.URL.Path)
-	if errors.Is(err, HandlerNotFoundErr) {
+	if errors.Is(err, ErrHandlerNotFound) {
 		logger.Debug("no matching handler, returning 404")
 
 		w.WriteHeader(http.StatusNotFound)
@@ -145,7 +148,7 @@ func (srv *Server) HandleRequest(w http.ResponseWriter, req *http.Request) {
 		// no reason to let strangers now the endpoint is valid.
 		w.WriteHeader(http.StatusNotFound)
 
-		if !errors.Is(err, ErrAuthFailed) {
+		if errors.Is(err, ErrAuthFailed) {
 			logger.Debug("authentication failed")
 			return
 		}
@@ -156,7 +159,6 @@ func (srv *Server) HandleRequest(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// kick off task and return.
-
 	payload, err := io.ReadAll(req.Body)
 	if err != nil {
 		srv.logger.Error("error reading the request body", "error", err)
@@ -175,7 +177,12 @@ func (srv *Server) HandleRequest(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-var ErrAuthFailed = errors.New("authentication failed")
+var (
+	ErrAuthFailed       = errors.New("authentication failed")
+	ErrUnknownValidator = errors.New("unknown validator")
+)
+
+const TokenHeaderField = "X-Authorization"
 
 func validateRequest(ctx context.Context, logger *slog.Logger, authCfg Auth, req *http.Request) error {
 	token := req.Header.Get(TokenHeaderField)
@@ -196,10 +203,13 @@ func validateRequest(ctx context.Context, logger *slog.Logger, authCfg Auth, req
 		logger.Debug("using command validator")
 		logger.Debug("run is: ", "run", authCfg.Run)
 
-		cmd := exec.CommandContext(ctx, "bash", "-c", fmt.Sprintf(`"%s"`, authCfg.Run))
-		cmd.Env = append(cmd.Env, "PIRATE_TOKEN="+token)
-
-		if err := cmd.Run(); err != nil {
+		if err := runScript(
+			ctx,
+			"pirate-command-*",
+			authCfg.Run,
+			[]string{"PIRATE_TOKEN=" + token},
+			logger,
+		); err != nil {
 			return fmt.Errorf("command returned error: %w", err)
 		}
 
@@ -210,6 +220,52 @@ func validateRequest(ctx context.Context, logger *slog.Logger, authCfg Auth, req
 	}
 }
 
-var ErrUnknownValidator = errors.New("unknown validator")
+const DoTimeout = 5 * time.Minute
 
-const TokenHeaderField = "X-Authorization"
+// Do runs after a request has been validated.
+// @TODO: maybe enforce Content-Type: application/json ?
+// @TODO: add optional shell setting to config.
+// @TODO: add handler timeout setting.
+func (srv *Server) Do(h Handler, headers map[string]string, payload []byte) {
+	l := srv.logger.With(
+		"Fn", "srv.Do",
+		"handler", h.Name,
+	)
+
+	l.Info("starting handler")
+
+	buf := &bytes.Buffer{}
+
+	if err := json.NewEncoder(buf).Encode(headers); err != nil {
+		l.Error("could not encode headers", "error", err)
+		return
+	}
+
+	env := []string{
+		fmt.Sprintf("PIRATE_HEADERS=%s", buf.String()),
+		fmt.Sprintf("PIRATE_BODY='%s'", string(payload)),
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), DoTimeout)
+	defer cancel()
+
+	if err := runScript(ctx, "pirate-webhook-script-*", h.Run, env, l); err != nil {
+		l.Error("error running script", "error", err)
+	}
+}
+
+func flush(stdout, stderr *safeBuffer, l *slog.Logger) {
+	outStr := stdout.String()
+	errStr := stderr.String()
+
+	stdout.Reset()
+	stderr.Reset()
+
+	if len(strings.TrimSpace(outStr)) > 0 {
+		l.Info(outStr)
+	}
+
+	if len(strings.TrimSpace(errStr)) > 0 {
+		l.Error(errStr)
+	}
+}
