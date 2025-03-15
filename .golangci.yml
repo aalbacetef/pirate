@@ -194,6 +194,8 @@ linters-settings:
       - p []byte
       - n int
       - wc io.WriteCloser
+      - w http.ResponseWriter
+      - req *http.Request
 
 
 
