@@ -259,7 +259,6 @@ linters:
     - varnamelen
     - whitespace
     - wrapcheck
-    - wsl
 
 
 issues:
