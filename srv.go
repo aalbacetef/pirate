@@ -45,7 +45,7 @@ const (
 // @TODO: the code for setting up logging file / dir should also handle the case
 // where we want to log to Stdout
 func NewServer(cfg Config) (*Server, error) {
-	loggingDir := strings.TrimSpace(cfg.Logging.Dir)
+	loggingDir := strings.TrimSpace(cfg.Server.Logging.Dir)
 	if strings.HasPrefix(loggingDir, "~/") {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
@@ -73,7 +73,7 @@ func NewServer(cfg Config) (*Server, error) {
 	if mkErr := os.MkdirAll(loggingDir, dirPerms); mkErr != nil {
 		return nil, fmt.Errorf(
 			"could not create logging directory (%s): %w",
-			cfg.Logging.Dir, mkErr,
+			cfg.Server.Logging.Dir, mkErr,
 		)
 	}
 

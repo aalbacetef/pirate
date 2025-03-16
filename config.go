@@ -39,8 +39,19 @@ type Handler struct {
 }
 
 type Config struct {
-	Logging  Logging   `yaml:"logging"`
+	Server struct {
+		Port    int     `yaml:"port"`
+		Logging Logging `yaml:"logging"`
+	} `yaml:"server"`
 	Handlers []Handler `yaml:"handlers"`
+}
+
+func (cfg Config) Valid() error {
+	if cfg.Server.Port == 0 {
+		return errors.New("port must be set")
+	}
+
+	return nil
 }
 
 // Load will attempt to load the config from the following
@@ -127,6 +138,10 @@ func loadConfigFromFile(fpath string) (Config, error) {
 
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return cfg, fmt.Errorf("could not unmarhsal config: %w", err)
+	}
+
+	if err := cfg.Valid(); err != nil {
+		return cfg, err
 	}
 
 	return cfg, nil

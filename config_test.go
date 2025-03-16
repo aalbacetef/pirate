@@ -32,7 +32,8 @@ func TestLoad(t *testing.T) {
 		}
 
 		wantCfg := Config{}
-		wantCfg.Logging.Dir = "./logs"
+		wantCfg.Server.Port = 3939
+		wantCfg.Server.Logging.Dir = "./logs"
 		wantCfg.Handlers = []Handler{
 			{
 				Endpoint: "/webhooks/simple",
@@ -79,8 +80,18 @@ func writeToTemp(t *testing.T, tmp *os.File, data []byte) {
 func compareConfig(t *testing.T, got, want Config) {
 	t.Helper()
 
-	if got.Logging.Dir != want.Logging.Dir {
-		t.Fatalf("(logging) got %s, want %s", got.Logging.Dir, want.Logging.Dir)
+	if got.Server.Port != want.Server.Port {
+		t.Fatalf(
+			"(port) got %d, want %d",
+			got.Server.Port, want.Server.Port,
+		)
+	}
+
+	if got.Server.Logging.Dir != want.Server.Logging.Dir {
+		t.Fatalf(
+			"(logging) got %s, want %s",
+			got.Server.Logging.Dir, want.Server.Logging.Dir,
+		)
 	}
 
 	gotN := len(got.Handlers)

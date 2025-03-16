@@ -1,14 +1,18 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/aalbacetef/pirate"
 )
+
+const RequestTimeout = 5 * time.Minute
 
 func main() {
 	cfgPath := ""
@@ -24,8 +28,6 @@ func main() {
 		return
 	}
 
-	fmt.Println("running server")
-
 	srv, err := pirate.NewServer(cfg)
 	if err != nil {
 		fmt.Println("error:", err)
@@ -36,13 +38,23 @@ func main() {
 
 		return
 	}
-
 	defer srv.Close()
 
-	r := chi.NewRouter()
-	r.Post("/*", srv.HandleRequest)
+	router := chi.NewRouter()
+	router.Post("/*", srv.HandleRequest)
 
-	if err := http.ListenAndServe("localhost:3939", r); err != nil {
-		fmt.Println("error ListenAndServe: ", err)
+	addr := fmt.Sprintf("localhost:%d", cfg.Server.Port)
+	fmt.Println("listening on: ", addr)
+
+	httpSrv := &http.Server{
+		Addr:        addr,
+		ReadTimeout: RequestTimeout,
+		Handler:     router,
+	}
+
+	if err := httpSrv.ListenAndServe(); err != nil {
+		if !errors.Is(err, http.ErrServerClosed) {
+			fmt.Println("error ListenAndServe: ", err)
+		}
 	}
 }
