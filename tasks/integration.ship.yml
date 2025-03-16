@@ -1,7 +1,9 @@
 
 
-logging:
-  dir: '~/logs' 
+server:
+  port: 3939
+  logging:
+    dir: '~/logs' 
 
 handlers:
   - endpoint: /webhooks/simple
