@@ -4,7 +4,6 @@ output:
     - format: colored-line-number
   print-issued-lines: true
   print-linter-name: true
-  uniq-by-line: true
   path-prefix: ""
   sort-results: false
 
@@ -268,4 +267,5 @@ issues:
   max-same-issues: 0
   new: false
   fix: false
+  uniq-by-line: true
 
