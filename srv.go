@@ -42,8 +42,7 @@ const (
 	filePerms                = 0o644
 )
 
-// @TODO: the code for setting up logging file / dir should also handle the case
-// where we want to log to Stdout
+// @TODO: handle log to Stdout.
 func NewServer(cfg Config) (*Server, error) {
 	loggingDir := strings.TrimSpace(cfg.Server.Logging.Dir)
 	if strings.HasPrefix(loggingDir, "~/") {
@@ -143,17 +142,16 @@ func (srv *Server) HandleRequest(w http.ResponseWriter, req *http.Request) {
 	ctx, cancel := context.WithTimeout(req.Context(), srv.validationTimeout)
 	defer cancel()
 
-	if err := validateRequest(ctx, srv.logger, handler.Auth, req); err != nil {
-
+	if validationErr := validateRequest(ctx, srv.logger, handler.Auth, req); validationErr != nil {
 		// no reason to let strangers now the endpoint is valid.
 		w.WriteHeader(http.StatusNotFound)
 
-		if errors.Is(err, ErrAuthFailed) {
+		if errors.Is(validationErr, ErrAuthFailed) {
 			logger.Debug("authentication failed")
 			return
 		}
 
-		logger.Error("unexpected request validation error", "error", err)
+		logger.Error("unexpected request validation error", "error", validationErr)
 
 		return
 	}
@@ -172,7 +170,8 @@ func (srv *Server) HandleRequest(w http.ResponseWriter, req *http.Request) {
 		headers[key] = req.Header.Get(key)
 	}
 
-	go srv.Do(handler, headers, payload)
+	// we don't pass the context as Do should run in the background independent of the request.
+	go srv.Do(&handler, headers, payload) //nolint: contextcheck
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -226,10 +225,10 @@ const DoTimeout = 5 * time.Minute
 // @TODO: maybe enforce Content-Type: application/json ?
 // @TODO: add optional shell setting to config.
 // @TODO: add handler timeout setting.
-func (srv *Server) Do(h Handler, headers map[string]string, payload []byte) {
+func (srv *Server) Do(handler *Handler, headers map[string]string, payload []byte) {
 	l := srv.logger.With(
 		"Fn", "srv.Do",
-		"handler", h.Name,
+		"handler", handler.Name,
 	)
 
 	l.Info("starting handler")
@@ -249,7 +248,7 @@ func (srv *Server) Do(h Handler, headers map[string]string, payload []byte) {
 	ctx, cancel := context.WithTimeout(context.Background(), DoTimeout)
 	defer cancel()
 
-	if err := runScript(ctx, "pirate-webhook-script-*", h.Run, env, l); err != nil {
+	if err := runScript(ctx, "pirate-webhook-script-*", handler.Run, env, l); err != nil {
 		l.Error("error running script", "error", err)
 	}
 }
