@@ -2,41 +2,178 @@
 
 == Introduction 
 
-Pirate is a webhooks taskrunner. It aims to satisfy the need of running tasks based off of webhook events. 
+Pirate is a webhooks task runner. It aims to satisfy the need for running tasks based on webhook events.
 
+Example config (explained below).
+[source,yaml]
+----
+server:
+  # optional: defaults to 'localhost'
+  host: localhost
 
-== Usage 
+  # required: port on which to listen to 
+  port: 3939
 
-Write your `ship.yml`:
+  # optional: maximum time allowed for a request, defaults to 5m 
+  request-timeout: '5m'
 
-```yaml
+  logging:
+    # required: logging directory.
+    #   Will be created with permission 744 if it doesn't exist
+    #   Filename will be pirate.YYYY-MM-DD--HH:mm:ss.log
+    dir: './logs' 
 
-logging:
-  dir: '~/logs' 
+    ## NOTE: special value :stdout: writes to standard output
+    # dir: ':stdout:'
+
 
 handlers:
-  - endpoint: /webhooks/repo-a
+  # all fields of the handler are required
+  - endpoint: /webhooks/simple
+    name: simple webhook handler
+
+    # authenticates the handler based on the value of the X-Authorization header 
     auth:
+      # a list validator will check if the token matches one of .token
+      validator: list
       token: 
         - alpha
         - beta
+    # script to run, the request headers and body are available as env vars.
+    run: |
+      SOME_VAR="some-variable"
+      echo "SOME_VAR: $SOME_VAR"
+      echo "body: $PIRATE_BODY"
+      echo "headers: $PIRATE_HEADERS" 
+      echo "header param: $PIRATE_HEADERS_SOME_PARAM"
+
+
+  - endpoint: /new-release
+    name: new release
+    auth:
+      # a command validator will pass if the run block exits with code = 0.
+      validator: command
+      run: |
+        echo "offloading validation to another program"
+        ./path/to/validator --token="$PIRATE_TOKEN" --name="$PIRATE_NAME"
+    run: | 
+      # one can call scripts from the run block, this which makes it easier
+      # to implement complex workflows
+      ./scripts/handle-new-release.sh  "$PIRATE_BODY"
+----
+
+== Installation
+
+TBC
+
+== Configuration
+
+Pirate uses a YAML configuration file (`ship.yml`) to define server settings, logging, and webhook handlers.
+
+=== Server Configuration
+
+The `server` section defines how Pirate listens for incoming webhook requests.
+
+[source,yaml]
+----
+server:
+  host: localhost       # Optional: Defaults to 'localhost'
+  port: 3939            # Required: The port Pirate listens on
+  request-timeout: '5m' # Optional: Defaults to 5 minutes
+----
+
+- *`host`* (optional) – The address Pirate binds to. Defaults to `localhost`.
+- *`port`* (required) – The port number Pirate listens on.
+- *`request-timeout`* (optional) – Maximum duration for processing a request (default: `5m`).
+
+=== Logging Configuration
+
+The `logging` section controls where logs are stored.
+
+[source,yaml]
+----
+logging:
+  dir: './logs'  # Required: Log directory or `:stdout:` for console output
+----
+
+- *`dir`* (required) – Directory where logs are saved.
+  - If the directory does not exist, Pirate creates it with **744 permissions**.
+  - Log files follow the format: `pirate.YYYY-MM-DD--HH:mm:ss.log`.
+  - Special value `:stdout:` writes logs to standard output.
+
+=== Webhook Handlers
+
+The `handlers` section defines webhook endpoints, authentication, and execution scripts.
+
+==== Example Handler
+
+[source,yaml]
+----
+handlers:
+  - endpoint: /webhooks/simple
+    name: simple webhook handler
+    auth:
       validator: list
-    name: "handle repo A's update"
+      token: 
+        - alpha
+        - beta
     run: |
       echo "body: $PIRATE_BODY"
-      echo "$PIRATE_HEADERS" 
+      echo "headers: $PIRATE_HEADERS"
+----
 
-  - endpoint: /another-path
-    auth:
-      validator: command
-      run: echo ok
-    name: "new release"
-    run: | 
-      echo body: $PIRATE_BODY
-```
+Each handler includes:
 
-Run it: 
+- *`endpoint`* (required) – The URL path for this webhook (e.g., `/webhooks/simple`).
+- *`name`* (required) – A human-readable name for the handler.
+- *`auth`* (required, one of `list` or `command`) – Authentication method:
+  - *`validator: list`* – Checks if the `X-Authorization` header matches one of the provided tokens.
+  - *`validator: command`* – Runs a script and passes authentication if it exits with `0`.
+- *`run`* (required) – A shell script executed when the webhook is triggered.
+  - Available environment variables:
+    - `$PIRATE_BODY`: The request body.
+    - `$PIRATE_HEADERS`: All request headers.
+    - `$PIRATE_HEADERS_<HEADER_NAME>`: A specific header value.
 
-```bash
-pirate -config ./path/to/ship.yml
-```
+==== Authentication Methods
+
+===== Token-based Authentication
+
+[source,yaml]
+----
+auth:
+  validator: list
+  token: 
+    - alpha
+    - beta
+----
+
+Passes if `X-Authorization` header matches one of the values of the `token` list, in this case: `alpha` or `beta`.
+
+===== Command-based Authentication
+
+[source,yaml]
+----
+auth:
+  validator: command
+  run: |
+    echo "running validation via a script"
+    ./scripts/validate-user.sh "$PIRATE_TOKEN"
+----
+
+Passes if the run block exits with exit code 0. 
+The `X-Authorization` header's value is exposed as an environment variable: `PIRATE_TOKEN`.
+The handler name is exposed as an environment variable: `PIRATE_NAME`.
+
+=== Running External Scripts
+
+Pirate allows running external scripts to handle complex workflows.
+
+[source,yaml]
+----
+run: |
+  ./scripts/handle-new-release.sh
+----
+
+This enables integration with CI/CD, deployment pipelines, and other automated tasks.
+

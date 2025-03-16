@@ -1,0 +1,55 @@
+
+
+server:
+  # optional: defaults to 'localhost'
+  host: localhost
+
+  # required: port on which to listen to 
+  port: 3939
+
+  # optional: maximum time allowed for a request, defaults to 5m 
+  request-timeout: '5m'
+
+  logging:
+    # required: logging directory.
+    #   Will be created with permission 744 if it doesn't exist
+    #   Filename will be pirate.YYYY-MM-DD--HH:mm:ss.log
+    dir: './logs' 
+
+    ## NOTE: special value :stdout: writes to standard output
+    # dir: ':stdout:'
+
+
+handlers:
+  # all fields of the handler are required
+  - endpoint: /webhooks/simple
+    name: simple webhook handler
+
+    # authenticates the handler based on the value of the X-Authorization header 
+    auth:
+      # a list validator will check if the token matches one of .token
+      validator: list
+      token: 
+        - alpha
+        - beta
+    # script to run, the request headers and body are available as env vars.
+    run: |
+      SOME_VAR="some-variable"
+      echo "SOME_VAR: $SOME_VAR"
+      echo "body: $PIRATE_BODY"
+      echo "headers: $PIRATE_HEADERS" 
+      echo "header param: $PIRATE_HEADERS_SOME_PARAM"
+
+
+  - endpoint: /new-release
+    name: new release
+    auth:
+      # a command validator will pass if the run block exits with code = 0.
+      validator: command
+      run: |
+        echo "offloading validation to another program"
+        ./path/to/validator --token="$PIRATE_TOKEN" --name="$PIRATE_NAME"
+    run: | 
+      # one can call scripts from the run block, this which makes it easier
+      # to implement complex workflows
+      ./scripts/handle-new-release.sh  "$PIRATE_BODY"
