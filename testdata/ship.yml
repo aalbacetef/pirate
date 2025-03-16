@@ -1,6 +1,6 @@
 
 server:
-  port: 30939
+  port: 3939
   logging:
     dir: './logs' 
 
