@@ -21,22 +21,24 @@ func main() {
 
 	flag.Parse()
 
+	if err := run(cfgPath); err != nil {
+		fmt.Println("error: ", err)
+	}
+}
+
+func run(cfgPath string) error {
 	cfg, src, err := pirate.Load(cfgPath)
 	if err != nil {
-		fmt.Println("src: ", src)
-		fmt.Println("error: ", err)
-		return
+		return fmt.Errorf("could not load config (source='%s'): %w", src, err)
 	}
 
 	srv, err := pirate.NewServer(cfg)
 	if err != nil {
-		fmt.Println("error:", err)
-
 		if srv != nil {
 			srv.Close()
 		}
 
-		return
+		return fmt.Errorf("pirate.NewServer: %w", err)
 	}
 	defer srv.Close()
 
@@ -52,9 +54,11 @@ func main() {
 		Handler:     router,
 	}
 
-	if err := httpSrv.ListenAndServe(); err != nil {
-		if !errors.Is(err, http.ErrServerClosed) {
-			fmt.Println("error ListenAndServe: ", err)
+	if listenErr := httpSrv.ListenAndServe(); listenErr != nil {
+		if !errors.Is(listenErr, http.ErrServerClosed) {
+			return fmt.Errorf("ListenAndServe: %w", listenErr)
 		}
 	}
+
+	return nil
 }
