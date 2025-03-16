@@ -19,7 +19,7 @@ func runScript(ctx context.Context, fname, contents string, env []string, l *slo
 	}
 	name := fd.Name()
 
-	defer cleanupFile(l, name)
+	defer func() { cleanupFile(l, name) }()
 
 	wroteBytes, err := fd.WriteString(contents)
 	if err != nil {
