@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -22,8 +24,8 @@ const (
 // If Validator is a CommandValidator, then the value of Run is executed and considered successful if exit code = 0.
 type Auth struct {
 	Token     []string  `yaml:"token"`
-	Validator Validator `yaml:"validator,omitempty"`
-	Run       string    `yaml:"run,omitempty"`
+	Validator Validator `yaml:"validator"`
+	Run       string    `yaml:"run"`
 }
 
 type Logging struct {
@@ -32,7 +34,7 @@ type Logging struct {
 
 // Handler waits for a webhook handler to come in and runs it if authenatication passes.
 type Handler struct {
-	Auth     Auth   `yaml:"auth,omitempty"`
+	Auth     Auth   `yaml:"auth"`
 	Endpoint string `yaml:"endpoint"`
 	Name     string `yaml:"name"`
 	Run      string `yaml:"run"`
@@ -40,18 +42,60 @@ type Handler struct {
 
 type Config struct {
 	Server struct {
-		Port    int     `yaml:"port"`
-		Logging Logging `yaml:"logging"`
+		Host           string   `yaml:"host"`
+		Port           int      `yaml:"port"`
+		Logging        Logging  `yaml:"logging"`
+		RequestTimeout Duration `yaml:"request-timeout"`
 	} `yaml:"server"`
 	Handlers []Handler `yaml:"handlers"`
 }
 
-func (cfg Config) Valid() error {
+func (cfg Config) Valid() error { //nolint:gocognit
 	if cfg.Server.Port == 0 {
-		return errors.New("port must be set")
+		return MustBeSetError{"port"}
+	}
+
+	if cfg.Server.Logging.Dir == "" {
+		return MustBeSetError{"logging.dir"}
+	}
+
+	for k, handler := range cfg.Handlers {
+		label := fmt.Sprintf("handler[%d]", k)
+		if handler.Endpoint == "" {
+			return MustBeSetError{label + ".endpoint"}
+		}
+
+		switch handler.Auth.Validator {
+		default:
+			return MustBeSetError{label + ".auth.validator"}
+		case CommandValidator:
+			if strings.TrimSpace(handler.Auth.Run) == "" {
+				return MustBeSetError{label + ".auth.run"}
+			}
+		case ListValidator:
+			if len(handler.Auth.Token) == 0 {
+				return MustBeSetError{label + ".auth.tokens"}
+			}
+		}
+
+		if handler.Name == "" {
+			return MustBeSetError{label + ".name"}
+		}
+
+		if strings.TrimSpace(handler.Run) == "" {
+			return MustBeSetError{label + ".run"}
+		}
 	}
 
 	return nil
+}
+
+type MustBeSetError struct {
+	field string
+}
+
+func (e MustBeSetError) Error() string {
+	return fmt.Sprintf("field '%s' must be set", e.field)
 }
 
 // Load will attempt to load the config from the following
@@ -140,9 +184,51 @@ func loadConfigFromFile(fpath string) (Config, error) {
 		return cfg, fmt.Errorf("could not unmarhsal config: %w", err)
 	}
 
+	// set default values if any
+	if cfg.Server.Host == "" {
+		cfg.Server.Host = defaultHost
+	}
+
 	if err := cfg.Valid(); err != nil {
 		return cfg, err
 	}
 
 	return cfg, nil
+}
+
+const (
+	defaultHost           = "localhost"
+	defaultRequestTimeout = 5 * time.Minute
+)
+
+type Duration struct {
+	time.Duration
+}
+
+func (d *Duration) MarshalJSON() ([]byte, error) {
+	dur := d.Duration
+
+	if dur == 0 {
+		dur = defaultRequestTimeout
+	}
+
+	return []byte(dur.String()), nil
+}
+
+func (d *Duration) UnmarshalJSON(data []byte) error {
+	str := string(data)
+
+	if str == "" {
+		d.Duration = defaultRequestTimeout
+		return nil
+	}
+
+	dur, err := time.ParseDuration(str)
+	if err != nil {
+		return fmt.Errorf("could not parse '%s': %w", str, err)
+	}
+
+	d.Duration = dur
+
+	return nil
 }
