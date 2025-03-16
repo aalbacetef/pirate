@@ -1,25 +1,28 @@
 
 logging:
-  dir: '~/logs' 
+  dir: './logs' 
 
 handlers:
-  - endpoint: /webhooks/repo-a
+  - endpoint: /webhooks/simple
+    name: simple webhook handler
     auth:
+      validator: list
       token: 
         - alpha
         - beta
-      validator: list
-    name: "handle repo A's update"
     run: |
-      PATH='/Users/arturo/.nix-profile/bin/:$PATH'
+      SOME_VAR="some-variable"
+      echo "SOME_VAR: $SOME_VAR"
       echo "body: $PIRATE_BODY"
-      echo "$PIRATE_HEADERS" | jq 'keys'
+      echo "headers: $PIRATE_HEADERS" 
+      echo "header param: $PIRATE_HEADERS_SOME_PARAM"
 
 
-  - endpoint: /another-path
+  - endpoint: /new-release
+    name: new release
     auth:
       validator: command
       run: 'exit 1'
-    name: "new release"
     run: | 
-      echo "body:" "$PIRATE_BODY"
+      echo "this should never run!"
+      ./some-script.sh $("$PIRATE_BODY" | jq -r '.token')

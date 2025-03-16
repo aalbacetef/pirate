@@ -32,20 +32,24 @@ func TestLoad(t *testing.T) {
 		}
 
 		wantCfg := Config{}
-		wantCfg.Logging.Dir = "~/logs"
+		wantCfg.Logging.Dir = "./logs"
 		wantCfg.Handlers = []Handler{
 			{
-				Endpoint: "/webhooks/repo-a",
-				Name:     "handle A repo's update",
-				Run: `echo "body:" "$PIRATE_BODY"` +
-					`echo "headers:" "$(echo "$PIRATE_HEADERS" | jq )"` +
-					`echo "header param:" "$PIRATE_HEADERS_SOME_PARAM"`,
+				Endpoint: "/webhooks/simple",
+				Name:     "simple webhook handler",
+				Run: `` +
+					`SOME_VAR="some-variable"` + "\n" +
+					`echo "SOME_VAR: $SOME_VAR"` + "\n" +
+					`echo "body: $PIRATE_BODY"` + "\n" +
+					`echo "headers: $PIRATE_HEADERS"` + "\n" +
+					`echo "header param: $PIRATE_HEADERS_SOME_PARAM"` + "",
 			},
 			{
-				Endpoint: "/another-path",
+				Endpoint: "/new-release",
 				Name:     "new release",
-				Run: `echo "body:" "$PIRATE_BODY"` +
-					`./some-script.sh $($PIRATE_BODY | jq -r '.token')`,
+				Run: `` +
+					`echo "this should never run!"` + "\n" +
+					`./some-script.sh $("$PIRATE_BODY" | jq -r '.token')`,
 			},
 		}
 
@@ -86,30 +90,29 @@ func compareConfig(t *testing.T, got, want Config) {
 		t.Fatalf("(handlers) got %d handlers, want %d", gotN, wantN)
 	}
 
-	for k, h := range got.Handlers {
-		w := want.Handlers[k]
+	for k, handler := range got.Handlers {
+		wantHandler := want.Handlers[k]
 
-		if h.Endpoint != w.Endpoint {
-			t.Fatalf("(handlers[%d].Endpoint) got '%s', want '%s'", k, h.Endpoint, w.Endpoint)
+		if handler.Endpoint != wantHandler.Endpoint {
+			t.Fatalf("(handlers[%d].Endpoint) got '%s', want '%s'", k, handler.Endpoint, wantHandler.Endpoint)
 		}
 
-		if h.Name != w.Name {
-			t.Fatalf("(handlers[%d].Name) got '%s', want '%s'", k, h.Name, w.Name)
+		if handler.Name != wantHandler.Name {
+			t.Fatalf("(handlers[%d].Name) got '%s', want '%s'", k, handler.Name, wantHandler.Name)
 		}
 
-		gotN, wantN := len(h.Run), len(w.Run)
+		gotLines, wantLines := strings.Split(strings.TrimSpace(handler.Run), "\n"), strings.Split(wantHandler.Run, "\n")
+		gotN, wantN := len(gotLines), len(wantLines)
 
 		if gotN != wantN {
 			t.Fatalf("(handlers[%d].Run) got %d entries, want %d", k, gotN, wantN)
 		}
 
-		want := strings.TrimSpace(w.Run)
-		got := strings.TrimSpace(h.Run)
-		if got != want {
-			t.Fatalf(
-				"(handlers[%d].Run) mismatch: got '%s', want '%s'",
-				k, got, want,
-			)
+		for index, line := range gotLines {
+			line = strings.TrimSpace(line)
+			if line != wantLines[index] {
+				t.Fatalf("(handlers[%d].Run) mismatch on line %d:\n  got  '%s'\n  want '%s'", k, index, line, wantLines[index])
+			}
 		}
 	}
 }
