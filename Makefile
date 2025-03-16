@@ -18,7 +18,10 @@ build: fmt mk-bin-dir
 test: fmt
 	go test -v ./...
 
-.PHONY: tidy fmt mk-bin-dir build test
+lint: fmt
+	golangci-lint run ./...
+
+.PHONY: tidy fmt mk-bin-dir build test lint
 
 
 build-testing-img:
