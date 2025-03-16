@@ -134,7 +134,7 @@ func (srv *Server) HandleRequest(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		logger.Error("srv.FindHandler returned an unexpected error", "error", err)
 
-		// no reason to let strangers now an error occurred.
+		// no reason to let strangers know an error occurred.
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -142,8 +142,8 @@ func (srv *Server) HandleRequest(w http.ResponseWriter, req *http.Request) {
 	ctx, cancel := context.WithTimeout(req.Context(), srv.validationTimeout)
 	defer cancel()
 
-	if validationErr := validateRequest(ctx, srv.logger, handler.Auth, req); validationErr != nil {
-		// no reason to let strangers now the endpoint is valid.
+	if validationErr := validateRequest(ctx, srv.logger, handler.Name, handler.Auth, req); validationErr != nil {
+		// no reason to let strangers know the endpoint is valid.
 		w.WriteHeader(http.StatusNotFound)
 
 		if errors.Is(validationErr, ErrAuthFailed) {
@@ -183,7 +183,7 @@ var (
 
 const TokenHeaderField = "X-Authorization"
 
-func validateRequest(ctx context.Context, logger *slog.Logger, authCfg Auth, req *http.Request) error {
+func validateRequest(ctx context.Context, logger *slog.Logger, name string, authCfg Auth, req *http.Request) error {
 	token := req.Header.Get(TokenHeaderField)
 
 	switch authCfg.Validator {
@@ -206,7 +206,10 @@ func validateRequest(ctx context.Context, logger *slog.Logger, authCfg Auth, req
 			ctx,
 			"pirate-command-*",
 			authCfg.Run,
-			[]string{"PIRATE_TOKEN=" + token},
+			[]string{
+				fmt.Sprintf("PIRATE_TOKEN='%s'", token),
+				fmt.Sprintf("PIRATE_NAME='%s'", name),
+			},
 			logger,
 		); err != nil {
 			return fmt.Errorf("command returned error: %w", err)
