@@ -17,19 +17,9 @@ func runScript(ctx context.Context, fname, contents string, env []string, l *slo
 	if err != nil {
 		return fmt.Errorf("could not create script: %w", err)
 	}
-
 	name := fd.Name()
 
-	defer func() {
-		l.Debug("cleaning up temp file", "name", name)
-
-		if rmErr := os.Remove(name); rmErr != nil {
-			l.Error("could not clean up temp file", "error", rmErr, "name", name)
-			return
-		}
-
-		l.Debug("cleaned up temp file", "name", name)
-	}()
+	defer cleanupFile(l, name)
 
 	wroteBytes, err := fd.WriteString(contents)
 	if err != nil {
@@ -45,7 +35,7 @@ func runScript(ctx context.Context, fname, contents string, env []string, l *slo
 	fd.Close()
 
 	cmd := exec.CommandContext(ctx, "bash", name)
-	cmd.Env = env
+	cmd.Env = append(cmd.Env, env...)
 
 	stdout, stderr := newSafeBuffer(), newSafeBuffer()
 
@@ -69,9 +59,8 @@ func runScript(ctx context.Context, fname, contents string, env []string, l *slo
 		}
 	}()
 
-	code := 0
 	if err := cmd.Wait(); err != nil {
-		code = 1
+		code := 1
 
 		exitErr := &exec.ExitError{}
 		if errors.As(err, &exitErr) {
@@ -84,4 +73,15 @@ func runScript(ctx context.Context, fname, contents string, env []string, l *slo
 	flush(stdout, stderr, l)
 
 	return nil
+}
+
+func cleanupFile(l *slog.Logger, name string) {
+	l.Debug("cleaning up temp file", "name", name)
+
+	if rmErr := os.Remove(name); rmErr != nil {
+		l.Error("could not clean up temp file", "error", rmErr, "name", name)
+		return
+	}
+
+	l.Debug("cleaned up temp file", "name", name)
 }
