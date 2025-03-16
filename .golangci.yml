@@ -163,6 +163,14 @@ linters-settings:
   nestif:
     min-complexity: 3
 
+  tagliatelle:
+    case:
+      rules:
+        json: kebab
+        yaml: kebab
+
+      use-field-name: true
+
   varnamelen:
     max-distance: 6
     min-name-length: 3
