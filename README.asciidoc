@@ -1,5 +1,9 @@
 = pirate 
 
+image:https://github.com/aalbacetef/pirate/actions/workflows/ci.yml/badge.svg[CI status] 
+image:https://img.shields.io/badge/License-BSD_3--Clause-blue.svg[License] 
+image:https://goreportcard.com/badge/github.com/aalbacetef/pirate[Go Report Card]
+
 Note: this is a WIP.
 
 :toc: 
