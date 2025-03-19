@@ -1,6 +1,7 @@
 
 server:
   port: 3939
+  request-timeout: '2m30s'
   logging:
     dir: './logs' 
 
