@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 //go:embed testdata/ship.yml
@@ -32,6 +33,7 @@ func TestLoad(t *testing.T) {
 		}
 
 		wantCfg := Config{}
+		wantCfg.Server.RequestTimeout = Duration{150 * time.Second}
 		wantCfg.Server.Port = 3939
 		wantCfg.Server.Logging.Dir = "./logs"
 		wantCfg.Handlers = []Handler{
@@ -80,6 +82,16 @@ func writeToTemp(t *testing.T, tmp *os.File, data []byte) {
 func compareConfig(t *testing.T, got, want Config) {
 	t.Helper()
 
+	gotTime := got.Server.RequestTimeout.String()
+	wantTime := want.Server.RequestTimeout.String()
+
+	if gotTime != wantTime {
+		t.Fatalf(
+			"(request-time) got %s, want %s",
+			gotTime, wantTime,
+		)
+	}
+
 	if got.Server.Port != want.Server.Port {
 		t.Fatalf(
 			"(port) got %d, want %d",
@@ -102,28 +114,35 @@ func compareConfig(t *testing.T, got, want Config) {
 	}
 
 	for k, handler := range got.Handlers {
-		wantHandler := want.Handlers[k]
+		testCompareHandler(t, k, &handler, &want.Handlers[k])
+	}
+}
 
-		if handler.Endpoint != wantHandler.Endpoint {
-			t.Fatalf("(handlers[%d].Endpoint) got '%s', want '%s'", k, handler.Endpoint, wantHandler.Endpoint)
-		}
+func testCompareHandler(t *testing.T, k int, handler, wantHandler *Handler) {
+	t.Helper()
 
-		if handler.Name != wantHandler.Name {
-			t.Fatalf("(handlers[%d].Name) got '%s', want '%s'", k, handler.Name, wantHandler.Name)
-		}
+	if handler.Endpoint != wantHandler.Endpoint {
+		t.Fatalf("(handlers[%d].Endpoint) got '%s', want '%s'", k, handler.Endpoint, wantHandler.Endpoint)
+	}
 
-		gotLines, wantLines := strings.Split(strings.TrimSpace(handler.Run), "\n"), strings.Split(wantHandler.Run, "\n")
-		gotN, wantN := len(gotLines), len(wantLines)
+	if handler.Name != wantHandler.Name {
+		t.Fatalf("(handlers[%d].Name) got '%s', want '%s'", k, handler.Name, wantHandler.Name)
+	}
 
-		if gotN != wantN {
-			t.Fatalf("(handlers[%d].Run) got %d entries, want %d", k, gotN, wantN)
-		}
+	gotLines, wantLines := strings.Split(strings.TrimSpace(handler.Run), "\n"), strings.Split(wantHandler.Run, "\n")
+	gotN, wantN := len(gotLines), len(wantLines)
 
-		for index, line := range gotLines {
-			line = strings.TrimSpace(line)
-			if line != wantLines[index] {
-				t.Fatalf("(handlers[%d].Run) mismatch on line %d:\n  got  '%s'\n  want '%s'", k, index, line, wantLines[index])
-			}
+	if gotN != wantN {
+		t.Fatalf("(handlers[%d].Run) got %d entries, want %d", k, gotN, wantN)
+	}
+
+	for index, line := range gotLines {
+		line = strings.TrimSpace(line)
+		if line != wantLines[index] {
+			t.Fatalf(
+				"(handlers[%d].Run) mismatch on line %d:\n  got  '%s'\n  want '%s'",
+				k, index, line, wantLines[index],
+			)
 		}
 	}
 }

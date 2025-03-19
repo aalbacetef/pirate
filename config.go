@@ -184,6 +184,10 @@ func loadConfigFromFile(fpath string) (Config, error) {
 		return cfg, fmt.Errorf("could not unmarhsal config: %w", err)
 	}
 
+	if cfg.Server.RequestTimeout.Duration == 0 {
+		cfg.Server.RequestTimeout.Duration = defaultRequestTimeout
+	}
+
 	// set default values if any
 	if cfg.Server.Host == "" {
 		cfg.Server.Host = defaultHost
@@ -231,4 +235,12 @@ func (d *Duration) UnmarshalJSON(data []byte) error {
 	d.Duration = dur
 
 	return nil
+}
+
+func (d *Duration) MarshalYAML() ([]byte, error) {
+	return d.MarshalJSON()
+}
+
+func (d *Duration) UnmarshalYAML(node *yaml.Node) error {
+	return d.UnmarshalJSON([]byte(node.Value))
 }
