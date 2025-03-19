@@ -36,5 +36,5 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v4
-      - run: 'apt update && apt install -yq make podman'
+      - run: 'sudo apt update && sudo apt install -yq make podman'
       - run: 'make run-integration-test'
