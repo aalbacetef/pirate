@@ -30,3 +30,11 @@ jobs:
         with:
           go-version: '1.23.x'
       - run: 'go test -v ./...'
+
+  integration-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - run: 'sudo apt update && sudo apt install -yq make podman'
+      - run: 'make run-integration-test'
