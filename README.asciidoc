@@ -1,5 +1,9 @@
 = pirate 
 
+Note: this is a WIP.
+
+:toc: 
+
 == Introduction 
 
 Pirate is a webhooks task runner. It aims to satisfy the need for running tasks based on webhook events.
@@ -82,9 +86,9 @@ server:
   request-timeout: '5m' # Optional: Defaults to 5 minutes
 ----
 
-- *`host`* (optional) – The address Pirate binds to. Defaults to `localhost`.
-- *`port`* (required) – The port number Pirate listens on.
-- *`request-timeout`* (optional) – Maximum duration for processing a request (default: `5m`).
+- *`host`* (optional) - The address Pirate binds to. Defaults to `localhost`.
+- *`port`* (required) - The port number Pirate listens on.
+- *`request-timeout`* (optional) - Maximum duration for processing a request (default: `5m`).
 
 === Logging Configuration
 
@@ -96,7 +100,7 @@ logging:
   dir: './logs'  # Required: Log directory or `:stdout:` for console output
 ----
 
-- *`dir`* (required) – Directory where logs are saved.
+- *`dir`* (required) - Directory where logs are saved.
   - If the directory does not exist, Pirate creates it with **744 permissions**.
   - Log files follow the format: `pirate.YYYY-MM-DD--HH:mm:ss.log`.
   - Special value `:stdout:` writes logs to standard output.
@@ -124,16 +128,15 @@ handlers:
 
 Each handler includes:
 
-- *`endpoint`* (required) – The URL path for this webhook (e.g., `/webhooks/simple`).
-- *`name`* (required) – A human-readable name for the handler.
-- *`auth`* (required, one of `list` or `command`) – Authentication method:
-  - *`validator: list`* – Checks if the `X-Authorization` header matches one of the provided tokens.
-  - *`validator: command`* – Runs a script and passes authentication if it exits with `0`.
-- *`run`* (required) – A shell script executed when the webhook is triggered.
-  - Available environment variables:
-    - `$PIRATE_BODY`: The request body.
-    - `$PIRATE_HEADERS`: All request headers.
-    - `$PIRATE_HEADERS_<HEADER_NAME>`: A specific header value.
+* *`endpoint`* (required) - The URL path for this webhook (e.g., `/webhooks/simple`).
+* *`name`* (required) - A human-readable name for the handler.
+* *`auth`* (required, one of `list` or `command`) - Authentication method:
+  - *`validator: list`* - Checks if the `X-Authorization` header matches one of the provided tokens.
+  - *`validator: command`* - Runs a script and passes authentication if it exits with `0`.
+* *`run`* (required) - A shell script executed when the webhook is triggered. Available environment variables:
+** `$PIRATE_BODY`: The request body.
+** `$PIRATE_HEADERS`: All request headers.
+** `$PIRATE_HEADERS_<HEADER_NAME>`: A specific header value.
 
 ==== Authentication Methods
 
