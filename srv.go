@@ -44,48 +44,9 @@ const (
 
 // @TODO: handle log to Stdout.
 func NewServer(cfg Config) (*Server, error) {
-	loggingDir := strings.TrimSpace(cfg.Server.Logging.Dir)
-	if strings.HasPrefix(loggingDir, "~/") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return nil, fmt.Errorf("could not get user home dir: %w", err)
-		}
-
-		loggingDir = filepath.Join(
-			homeDir,
-			strings.Replace(loggingDir, "~/", "", 1),
-		)
-	}
-
-	// @TODO: add timestamp to filename
-	loggingDir, err := filepath.Abs(loggingDir)
+	fd, cleanupFn, err := initializeLogging(cfg.Server.Logging.Dir)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"could not make absolute filepath: %w",
-			err,
-		)
-	}
-
-	fpath := filepath.Join(loggingDir, "app.log")
-
-	// make directory if doesn't exist
-	if mkErr := os.MkdirAll(loggingDir, dirPerms); mkErr != nil {
-		return nil, fmt.Errorf(
-			"could not create logging directory (%s): %w",
-			cfg.Server.Logging.Dir, mkErr,
-		)
-	}
-
-	fd, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, filePerms)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"could not create log file (%s): %w",
-			fpath, err,
-		)
-	}
-
-	closeFn := func() {
-		fd.Close()
+		return nil, err
 	}
 
 	srv := &Server{
@@ -97,9 +58,65 @@ func NewServer(cfg Config) (*Server, error) {
 		validationTimeout: defaultValidationTimeout,
 	}
 
-	srv.cleanup = append(srv.cleanup, closeFn)
+	srv.cleanup = append(srv.cleanup, cleanupFn)
 
 	return srv, nil
+}
+
+const (
+	LogToStdOut        = ":stdout:"
+	LogTimestampFormat = "2006-01-02--15-04-05"
+)
+
+func initializeLogging(loggingDir string) (*os.File, func(), error) {
+	loggingDir = strings.TrimSpace(loggingDir)
+	noop := func() {}
+
+	if loggingDir == LogToStdOut {
+		return os.Stdout, noop, nil
+	}
+
+	if strings.HasPrefix(loggingDir, "~/") {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, nil, fmt.Errorf("could not get user home dir: %w", err)
+		}
+
+		loggingDir = filepath.Join(
+			homeDir,
+			strings.Replace(loggingDir, "~/", "", 1),
+		)
+	}
+
+	// @TODO: add timestamp to filename
+	loggingDir, err := filepath.Abs(loggingDir)
+	if err != nil {
+		return nil, nil, fmt.Errorf(
+			"could not make absolute filepath: %w",
+			err,
+		)
+	}
+
+	timestamp := (time.Now()).Format(LogTimestampFormat)
+	fpath := filepath.Join(loggingDir, fmt.Sprintf("%s.log", timestamp))
+
+	// make directory if doesn't exist
+	if mkErr := os.MkdirAll(loggingDir, dirPerms); mkErr != nil {
+		return nil, nil, fmt.Errorf(
+			"could not create logging directory (%s): %w",
+			loggingDir, mkErr,
+		)
+	}
+
+	fd, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, filePerms)
+	if err != nil {
+		return nil, nil, fmt.Errorf(
+			"could not create log file (%s): %w",
+			fpath, err,
+		)
+	}
+
+	return fd, func() { fd.Close() }, nil
 }
 
 var ErrHandlerNotFound = errors.New("no matching handler was found")
@@ -199,9 +216,6 @@ func validateRequest(ctx context.Context, logger *slog.Logger, name string, auth
 		return ErrAuthFailed
 
 	case CommandValidator:
-		logger.Debug("using command validator")
-		logger.Debug("run is: ", "run", authCfg.Run)
-
 		if err := runScript(
 			ctx,
 			"pirate-command-*",
