@@ -29,8 +29,8 @@ build-testing-img:
 
 container_opts = 
 
-run-testing-img: build-testing-img
+run-integration-test: build-testing-img
 	$(runner) run $(container_opts) --rm -it pirate:testing
 
 
-.PHONY: build-testing-img run-testing-img
+.PHONY: build-testing-img run-integration-test
