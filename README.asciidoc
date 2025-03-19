@@ -178,5 +178,4 @@ run: |
   ./scripts/handle-new-release.sh
 ----
 
-This enables integration with CI/CD, deployment pipelines, and other automated tasks.
 
