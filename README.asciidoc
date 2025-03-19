@@ -15,12 +15,12 @@ server:
   port: 3939
 
   # optional: maximum time allowed for a request, defaults to 5m 
-  request-timeout: '5m'
+  request-timeout: '5m0s'
 
   logging:
     # required: logging directory.
     #   Will be created with permission 744 if it doesn't exist
-    #   Filename will be pirate.YYYY-MM-DD--HH:mm:ss.log
+    #   Filename will be pirate.YYYY-MM-DD--hh:mm:ss.log
     dir: './logs' 
 
     ## NOTE: special value :stdout: writes to standard output
