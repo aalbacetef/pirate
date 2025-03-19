@@ -5,14 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/aalbacetef/pirate"
 )
-
-const RequestTimeout = 5 * time.Minute
 
 func main() {
 	cfgPath := ""
@@ -45,12 +42,12 @@ func run(cfgPath string) error {
 	router := chi.NewRouter()
 	router.Post("/*", srv.HandleRequest)
 
-	addr := fmt.Sprintf("localhost:%d", cfg.Server.Port)
+	addr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 	fmt.Println("listening on: ", addr)
 
 	httpSrv := &http.Server{
 		Addr:        addr,
-		ReadTimeout: RequestTimeout,
+		ReadTimeout: cfg.Server.RequestTimeout.Duration,
 		Handler:     router,
 	}
 
