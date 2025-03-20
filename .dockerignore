@@ -5,3 +5,4 @@ logs/
 Dockerfile
 testing.Dockerfile
 *.out
+/*.html
