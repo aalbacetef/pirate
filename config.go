@@ -3,6 +3,7 @@ package pirate
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -168,19 +169,25 @@ func (e FileNotFoundError) Error() string {
 }
 
 func loadConfigFromFile(fpath string) (Config, error) {
-	cfg := Config{}
-
 	absPath, err := filepath.Abs(fpath)
 	if err != nil {
-		return cfg, fmt.Errorf("filepath.Abspath failed when loading config from file: %w", err)
+		return Config{}, fmt.Errorf("filepath.Abspath failed when loading config from file: %w", err)
 	}
 
-	data, err := os.ReadFile(fpath)
+	fd, err := os.Open(fpath)
 	if err != nil {
-		return cfg, fmt.Errorf("could not read file '%s': %w", absPath, err)
+		return Config{}, fmt.Errorf("could not read file '%s': %w", absPath, err)
 	}
 
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+	defer fd.Close()
+
+	return loadConfig(fd)
+}
+
+func loadConfig(r io.Reader) (Config, error) {
+	cfg := Config{}
+
+	if err := yaml.NewDecoder(r).Decode(&cfg); err != nil {
 		return cfg, fmt.Errorf("could not unmarhsal config: %w", err)
 	}
 
