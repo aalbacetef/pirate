@@ -25,10 +25,10 @@ lint: fmt
 	golangci-lint run ./...
 
 test_profile_name = test.coverage.out
-test_coverage_html = test.coverage.html 
+test_coverage_html = test.coverage.html
 
 test-coverage: test 
-	go tool cover -o "$(test_coverage_html)" -cover "$(test_profile_name)"
+	go tool cover -o "$(test_coverage_html)" -html "$(test_profile_name)"
 
 test-cleanup:
 	rm -f "$(test_profile_name)" 
