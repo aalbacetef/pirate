@@ -29,6 +29,7 @@ type Auth struct {
 	Run       string    `yaml:"run"`
 }
 
+// Logging defines the directory where logs should be written.
 type Logging struct {
 	Dir string `yaml:"dir"`
 }
@@ -41,6 +42,7 @@ type Handler struct {
 	Run      string `yaml:"run"`
 }
 
+// Config defines the configuration for the pirate server and its handlers.
 type Config struct {
 	Server struct {
 		Host           string   `yaml:"host"`
@@ -97,6 +99,7 @@ func (cfg Config) Valid() error { //nolint:gocognit
 	return nil
 }
 
+// MustBeSetError represents an error indicating a required field is missing.
 type MustBeSetError struct {
 	field string
 }
@@ -148,12 +151,7 @@ const (
 	LoadFromCurDir Source = "load-from-cur-dir"
 )
 
-// default variables.
-const (
-	ConfigEnvVar    = "PIRATE_CONFIG_PATH"
-	defaultFilename = "ship.yml"
-)
-
+// determineSource determines the source of the configuration file.
 func determineSource(fpath string) Source {
 	if fpath != "" {
 		return LoadFromFlag
@@ -166,6 +164,7 @@ func determineSource(fpath string) Source {
 	return LoadFromCurDir
 }
 
+// FileNotFoundError represents an error when a config file is not found.
 type FileNotFoundError struct {
 	Path string
 }
@@ -174,6 +173,7 @@ func (e FileNotFoundError) Error() string {
 	return fmt.Sprintf("file not found: '%s'", e.Path)
 }
 
+// loadConfigFromFile loads the configuration from a specified file path.
 func loadConfigFromFile(fpath string) (Config, error) {
 	absPath, err := filepath.Abs(fpath)
 	if err != nil {
@@ -190,6 +190,7 @@ func loadConfigFromFile(fpath string) (Config, error) {
 	return loadConfig(fd)
 }
 
+// loadConfig loads the configuration from an io.Reader.
 func loadConfig(r io.Reader) (Config, error) {
 	cfg := Config{}
 
@@ -213,15 +214,12 @@ func loadConfig(r io.Reader) (Config, error) {
 	return cfg, nil
 }
 
-const (
-	defaultHost           = "localhost"
-	defaultRequestTimeout = 5 * time.Minute
-)
-
+// Duration is a wrapper around time.Duration that supports JSON and YAML marshaling/unmarshaling.
 type Duration struct {
 	time.Duration
 }
 
+// MarshalJSON marshals the Duration to JSON.
 func (d *Duration) MarshalJSON() ([]byte, error) {
 	dur := d.Duration
 
@@ -232,6 +230,7 @@ func (d *Duration) MarshalJSON() ([]byte, error) {
 	return []byte(dur.String()), nil
 }
 
+// UnmarshalJSON unmarshals the Duration from JSON.
 func (d *Duration) UnmarshalJSON(data []byte) error {
 	str := string(data)
 
@@ -250,10 +249,12 @@ func (d *Duration) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalYAML marshals the Duration to YAML.
 func (d *Duration) MarshalYAML() ([]byte, error) {
 	return d.MarshalJSON()
 }
 
+// UnmarshalYAML unmarshals the Duration from YAML.
 func (d *Duration) UnmarshalYAML(node *yaml.Node) error {
 	return d.UnmarshalJSON([]byte(node.Value))
 }
