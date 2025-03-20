@@ -185,7 +185,8 @@ func testCompareHandler(t *testing.T, k int, handler, wantHandler *Handler) {
 		t.Fatalf("(handlers[%d].Name) got '%s', want '%s'", k, handler.Name, wantHandler.Name)
 	}
 
-	gotLines, wantLines := strings.Split(strings.TrimSpace(handler.Run), "\n"), strings.Split(wantHandler.Run, "\n")
+	gotLines := strings.Split(strings.TrimSpace(handler.Run), "\n")
+	wantLines := strings.Split(strings.TrimSpace(wantHandler.Run), "\n")
 	gotN, wantN := len(gotLines), len(wantLines)
 
 	if gotN != wantN {
@@ -194,7 +195,7 @@ func testCompareHandler(t *testing.T, k int, handler, wantHandler *Handler) {
 
 	for index, line := range gotLines {
 		line = strings.TrimSpace(line)
-		if line != wantLines[index] {
+		if line != strings.TrimSpace(wantLines[index]) {
 			t.Fatalf(
 				"(handlers[%d].Run) mismatch on line %d:\n  got  '%s'\n  want '%s'",
 				k, index, line, wantLines[index],
