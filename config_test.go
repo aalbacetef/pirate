@@ -1,82 +1,138 @@
 package pirate
 
 import (
+	"bytes"
 	_ "embed"
-	"os"
 	"strings"
 	"testing"
 	"time"
 )
 
 //go:embed testdata/ship.yml
-var testFile []byte
+var testFilePopulated []byte
+
+//go:embed testdata/ship.only-required.yml
+var testFileOnlyRequired []byte
 
 func TestLoad(t *testing.T) {
-	tmp, err := os.CreateTemp("", "pirate-test-load-*")
+	cfg, err := loadConfig(bytes.NewReader(testFilePopulated))
 	if err != nil {
-		t.Fatalf("could not create temp file: %v", err)
+		t.Fatalf("could not load file: %v", err)
 	}
-	defer os.Remove(tmp.Name())
 
-	writeToTemp(t, tmp, testFile)
+	wantCfg := Config{}
+	wantCfg.Server.RequestTimeout = Duration{150 * time.Second}
+	wantCfg.Server.Port = 3939
+	wantCfg.Server.Logging.Dir = "./logs"
+	wantCfg.Handlers = []Handler{
+		{
+			Endpoint: "/webhooks/simple",
+			Name:     "simple webhook handler",
+			Run: `` +
+				`SOME_VAR="some-variable"` + "\n" +
+				`echo "SOME_VAR: $SOME_VAR"` + "\n" +
+				`echo "body: $PIRATE_BODY"` + "\n" +
+				`echo "headers: $PIRATE_HEADERS"` + "\n" +
+				`echo "header param: $PIRATE_HEADERS_SOME_PARAM"` + "",
+		},
+		{
+			Endpoint: "/new-release",
+			Name:     "new release",
+			Run: `` +
+				`echo "this should never run!"` + "\n" +
+				`./some-script.sh $("$PIRATE_BODY" | jq -r '.token')`,
+		},
+	}
 
-	t.Run("can correctly parse the file", func(tt *testing.T) {
-		fpath := tmp.Name()
+	compareConfig(t, cfg, wantCfg)
+}
 
-		cfg, src, err := Load(fpath)
-		if err != nil {
-			tt.Fatalf("could not load file: %v", err)
+func TestLoadsDefaults(t *testing.T) {
+	rdr := bytes.NewReader(testFileOnlyRequired)
+
+	cfg, err := loadConfig(rdr)
+	if err != nil {
+		t.Fatalf("error parsing file: %v", err)
+	}
+
+	t.Run("default host was set", func(tt *testing.T) {
+		got := cfg.Server.Host
+		want := defaultHost
+
+		if got != want {
+			tt.Fatalf("got '%s', want '%s'", got, want)
 		}
+	})
 
-		if src != LoadFromFlag {
-			tt.Fatalf("(source) expected %s, got %s", LoadFromFlag, src)
+	t.Run("default request timeout", func(tt *testing.T) {
+		got := cfg.Server.RequestTimeout.String()
+		want := cfg.Server.RequestTimeout.String()
+
+		if got != want {
+			tt.Fatalf("got '%s', want '%s'", got, want)
 		}
-
-		wantCfg := Config{}
-		wantCfg.Server.RequestTimeout = Duration{150 * time.Second}
-		wantCfg.Server.Port = 3939
-		wantCfg.Server.Logging.Dir = "./logs"
-		wantCfg.Handlers = []Handler{
-			{
-				Endpoint: "/webhooks/simple",
-				Name:     "simple webhook handler",
-				Run: `` +
-					`SOME_VAR="some-variable"` + "\n" +
-					`echo "SOME_VAR: $SOME_VAR"` + "\n" +
-					`echo "body: $PIRATE_BODY"` + "\n" +
-					`echo "headers: $PIRATE_HEADERS"` + "\n" +
-					`echo "header param: $PIRATE_HEADERS_SOME_PARAM"` + "",
-			},
-			{
-				Endpoint: "/new-release",
-				Name:     "new release",
-				Run: `` +
-					`echo "this should never run!"` + "\n" +
-					`./some-script.sh $("$PIRATE_BODY" | jq -r '.token')`,
-			},
-		}
-
-		compareConfig(tt, cfg, wantCfg)
 	})
 }
 
-func writeToTemp(t *testing.T, tmp *os.File, data []byte) {
-	t.Helper()
-
-	n := len(data)
-
-	wrote, err := tmp.Write(data)
+func TestConfigIsValid(t *testing.T) {
+	baseCfg, err := loadConfig(bytes.NewReader(testFileOnlyRequired))
 	if err != nil {
-		t.Fatalf("could not write to temp file: %v", err)
+		t.Fatalf("could not load base file: %v", err)
 	}
 
-	if wrote != n {
-		t.Fatalf("unexpected number of bytes, want %d, wrote %d", n, wrote)
-	}
+	t.Run("should validate port", func(tt *testing.T) {
+		cfg := clone(baseCfg)
+		cfg.Server.Port = 0
 
-	if err := tmp.Sync(); err != nil {
-		t.Fatalf("could not sync file: %v", err)
-	}
+		if cfg.Valid() == nil {
+			tt.Fatalf("error: should've failed")
+		}
+	})
+
+	t.Run("should validate host", func(tt *testing.T) {
+		cfg := clone(baseCfg)
+		cfg.Server.Host = ""
+
+		if cfg.Valid() == nil {
+			tt.Fatalf("error: should've failed")
+		}
+	})
+
+	t.Run("should validate auth.handler.validator", func(tt *testing.T) {
+		cfg := clone(baseCfg)
+		cfg.Handlers[0].Auth.Validator = ""
+
+		if cfg.Valid() == nil {
+			tt.Fatalf("error: should've failed")
+		}
+	})
+
+	t.Run("should validate auth.handler.tokens when validator is list", func(tt *testing.T) {
+		tt.Run("fail if nil", func(ttt *testing.T) {
+			cfg := clone(baseCfg)
+			cfg.Handlers[0].Auth.Validator = ListValidator
+			cfg.Handlers[0].Auth.Token = nil
+
+			if cfg.Valid() == nil {
+				ttt.Fatalf("should've failed")
+			}
+		})
+
+		tt.Run("fail if empty", func(ttt *testing.T) {
+			cfg := clone(baseCfg)
+			cfg.Handlers[0].Auth.Validator = ListValidator
+			cfg.Handlers[0].Auth.Token = []string{}
+
+			if cfg.Valid() == nil {
+				ttt.Fatalf("should've failed")
+			}
+		})
+	})
+}
+
+func clone[T any](v T) T { //nolint:ireturn
+	ptr := &v
+	return *ptr
 }
 
 func compareConfig(t *testing.T, got, want Config) {
@@ -129,7 +185,8 @@ func testCompareHandler(t *testing.T, k int, handler, wantHandler *Handler) {
 		t.Fatalf("(handlers[%d].Name) got '%s', want '%s'", k, handler.Name, wantHandler.Name)
 	}
 
-	gotLines, wantLines := strings.Split(strings.TrimSpace(handler.Run), "\n"), strings.Split(wantHandler.Run, "\n")
+	gotLines := strings.Split(strings.TrimSpace(handler.Run), "\n")
+	wantLines := strings.Split(strings.TrimSpace(wantHandler.Run), "\n")
 	gotN, wantN := len(gotLines), len(wantLines)
 
 	if gotN != wantN {
@@ -138,7 +195,7 @@ func testCompareHandler(t *testing.T, k int, handler, wantHandler *Handler) {
 
 	for index, line := range gotLines {
 		line = strings.TrimSpace(line)
-		if line != wantLines[index] {
+		if line != strings.TrimSpace(wantLines[index]) {
 			t.Fatalf(
 				"(handlers[%d].Run) mismatch on line %d:\n  got  '%s'\n  want '%s'",
 				k, index, line, wantLines[index],

@@ -1,0 +1,31 @@
+
+server:
+  port: 3939
+  request-timeout: '2m30s'
+  logging:
+    dir: ':stdout:' 
+
+handlers:
+  - endpoint: /webhooks/simple
+    name: simple webhook handler
+    auth:
+      validator: list
+      token: 
+        - alpha
+        - beta
+    run: |
+      SOME_VAR="some-variable"
+      echo "SOME_VAR: $SOME_VAR"
+      echo "body: $PIRATE_BODY"
+      echo "headers: $PIRATE_HEADERS" 
+      echo "header param: $PIRATE_HEADERS_SOME_PARAM"
+
+
+  - endpoint: /new-release
+    name: new release
+    auth:
+      validator: command
+      run: 'exit 1'
+    run: | 
+      echo "this should never run!"
+      ./some-script.sh $("$PIRATE_BODY" | jq -r '.token')

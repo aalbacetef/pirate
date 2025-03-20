@@ -1,0 +1,20 @@
+
+server:
+  port: 3939
+  logging:
+    dir: './logs' 
+
+handlers:
+  - endpoint: /webhooks/simple
+    name: simple webhook handler
+    auth:
+      validator: list
+      token: 
+        - alpha
+        - beta
+    run: |
+      SOME_VAR="some-variable"
+      echo "SOME_VAR: $SOME_VAR"
+      echo "body: $PIRATE_BODY"
+      echo "headers: $PIRATE_HEADERS" 
+      echo "header param: $PIRATE_HEADERS_SOME_PARAM"

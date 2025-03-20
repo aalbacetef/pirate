@@ -1,1 +1,8 @@
 bin/
+logs/
+.git/
+.github/
+Dockerfile
+testing.Dockerfile
+*.out
+/*.html
