@@ -51,7 +51,13 @@ type Config struct {
 	Handlers []Handler `yaml:"handlers"`
 }
 
+// Valid will fail if fields are missing.
+// Note that it expects optional fields to be set before being called.
 func (cfg Config) Valid() error { //nolint:gocognit
+	if cfg.Server.Host == "" {
+		return MustBeSetError{"host"}
+	}
+
 	if cfg.Server.Port == 0 {
 		return MustBeSetError{"port"}
 	}
