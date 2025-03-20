@@ -3,6 +3,7 @@ package pirate
 import (
 	"bytes"
 	_ "embed"
+	"errors"
 	"testing"
 )
 
@@ -39,6 +40,36 @@ func TestServerInit(t *testing.T) {
 		if gotN != wantN {
 			tt.Fatalf("got %d, want %d", gotN, wantN)
 		}
+	})
+}
+
+func TestServerFindHandler(t *testing.T) {
+	cfg, err := loadConfig(bytes.NewReader(testConfigFile))
+	if err != nil {
+		t.Fatalf("could not load config file: %v", err)
+	}
+
+	server, err := NewServer(cfg)
+	if err != nil {
+		t.Fatalf("could not initialize server: %v", err)
+	}
+
+	t.Run("invalid handlers should return ErrHandlerNotFound", func(tt *testing.T) {
+		missingHandler := "missing-handler"
+
+		if _, err := server.FindHandler(missingHandler); !errors.Is(err, ErrHandlerNotFound) {
+			tt.Fatalf("expected error '%v', got '%v'", ErrHandlerNotFound, err)
+		}
+	})
+
+	t.Run("valid handler should be found", func(tt *testing.T) {
+		want := cfg.Handlers[0]
+		got, err := server.FindHandler(want.Endpoint)
+		if err != nil {
+			tt.Fatalf("unexpected error: %v", err)
+		}
+
+		testCompareHandler(tt, 0, &got, &want)
 	})
 }
 
