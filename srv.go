@@ -182,6 +182,8 @@ func (srv *Server) HandleRequest(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	req.Body.Close()
+
 	headers := make(map[string]string, len(req.Header))
 	for key := range req.Header {
 		headers[key] = req.Header.Get(key)
