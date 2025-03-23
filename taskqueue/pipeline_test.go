@@ -10,15 +10,15 @@ import (
 func TestPipeline(t *testing.T) {
 	jobDuration := 1 * time.Minute
 
-	timedJob := NewJob(func(ctx context.Context) error {
+	timedJob := mustCreateJob(t, func(ctx context.Context) error {
 		time.Sleep(jobDuration)
 		return nil
 	})
-	quickJob := NewJob(func(ctx context.Context) error {
+	quickJob := mustCreateJob(t, func(ctx context.Context) error {
 		time.Sleep(100 * time.Second)
 		return nil
 	})
-	failedJob := NewJob(func(ctx context.Context) error {
+	failedJob := mustCreateJob(t, func(ctx context.Context) error {
 		return errors.New("Unkownn error")
 	})
 
@@ -95,4 +95,15 @@ func compareState(t *testing.T, want JobState, pipelineState PipelineState, id s
 	if want != got {
 		t.Fatalf("(state) got '%s', want '%s'")
 	}
+}
+
+func mustCreateJob(t *testing.T, fn JobFn) *Job {
+	t.Helper()
+
+	job, err := NewJob(fn)
+	if err != nil {
+		t.Fatalf("error creating job: %v", err)
+	}
+
+	return job
 }
