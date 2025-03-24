@@ -7,20 +7,21 @@ import (
 	"time"
 )
 
-func TestPipeline(t *testing.T) {
+func TestPipeline(t *testing.T) { //nolint:funlen
 	jobDuration := 30 * time.Second
 	quickJobDuration := 100 * time.Millisecond
 	interStepDelay := 100 * time.Millisecond
+	waitUntilDone := 500 * time.Millisecond
 
-	timedJob := mustCreateJob(t, func(ctx context.Context) error {
+	timedJob := mustCreateJob(t, func(_ context.Context) error {
 		time.Sleep(jobDuration)
 		return nil
 	})
-	quickJob := mustCreateJob(t, func(ctx context.Context) error {
+	quickJob := mustCreateJob(t, func(_ context.Context) error {
 		time.Sleep(quickJobDuration)
 		return nil
 	})
-	failedJob := mustCreateJob(t, func(ctx context.Context) error {
+	failedJob := mustCreateJob(t, func(_ context.Context) error {
 		return errors.New("forcing job to fail")
 	})
 
@@ -75,7 +76,7 @@ func TestPipeline(t *testing.T) {
 		compareState(tt, Running, current, quickJob.ID)
 		compareState(tt, Queued, current, failedJob.ID)
 
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(waitUntilDone)
 	})
 
 	time.Sleep(interStepDelay)
