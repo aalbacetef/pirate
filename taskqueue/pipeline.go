@@ -184,12 +184,12 @@ type PipelineState struct {
 	jobStates map[string]JobState
 }
 
-func (ps PipelineState) Check(id string) (JobState, error) {
-	for jobID, jobState := range ps.jobStates {
-		if jobID == id {
+func (ps PipelineState) Check(jobID string) (JobState, error) {
+	for _jobID, jobState := range ps.jobStates {
+		if _jobID == jobID {
 			return jobState, nil
 		}
 	}
 
-	return "", JobNotFoundError{id}
+	return "", JobNotFoundError{jobID}
 }
