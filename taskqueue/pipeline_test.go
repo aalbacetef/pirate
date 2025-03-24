@@ -8,18 +8,20 @@ import (
 )
 
 func TestPipeline(t *testing.T) {
-	jobDuration := 1 * time.Minute
+	jobDuration := 30 * time.Second
+	quickJobDuration := 100 * time.Millisecond
+	interStepDelay := 100 * time.Millisecond
 
 	timedJob := mustCreateJob(t, func(ctx context.Context) error {
 		time.Sleep(jobDuration)
 		return nil
 	})
 	quickJob := mustCreateJob(t, func(ctx context.Context) error {
-		time.Sleep(100 * time.Second)
+		time.Sleep(quickJobDuration)
 		return nil
 	})
 	failedJob := mustCreateJob(t, func(ctx context.Context) error {
-		return errors.New("Unkownn error")
+		return errors.New("forcing job to fail")
 	})
 
 	pipeline, err := NewPipeline("handler-1")
@@ -32,18 +34,19 @@ func TestPipeline(t *testing.T) {
 	}
 
 	jobs := []*Job{timedJob, quickJob, failedJob}
-	delay := 250 * time.Millisecond
-	start := time.Now().Add(delay)
+
+	start := time.Now()
 
 	for _, jb := range jobs {
-		time.Sleep(delay)
 		if err := pipeline.Add(jb); err != nil {
 			t.Fatalf("could not add to pipeline: %v", err)
 		}
 	}
 
+	time.Sleep(interStepDelay)
+
 	t.Run("should only be running first job", func(tt *testing.T) {
-		current := pipeline.State()
+		current := mustGetPipelineState(tt, pipeline)
 
 		now := time.Now()
 		elapsed := now.Sub(start)
@@ -52,36 +55,38 @@ func TestPipeline(t *testing.T) {
 			tt.Fatalf("took too long to reach test: %s", elapsed.String())
 		}
 
-		compareState(t, Running, current, timedJob.ID)
+		compareState(tt, Running, current, timedJob.ID)
 
 		for _, j := range jobs[1:] {
-			compareState(t, Queued, current, j.ID)
+			compareState(tt, Queued, current, j.ID)
 		}
 	})
 
-	timeLeft := (time.Now()).Sub(start)
-	if timeLeft > 0 {
+	timeElapsed := time.Since(start)
+	if jobDuration >= timeElapsed {
+		timeLeft := jobDuration - timeElapsed
 		time.Sleep(timeLeft + (50 * time.Millisecond))
 	}
 
 	t.Run("should run the second job", func(tt *testing.T) {
-		current := pipeline.State()
+		current := mustGetPipelineState(tt, pipeline)
 
-		compareState(t, Done, current, timedJob.ID)
-		compareState(t, Running, current, quickJob.ID)
-		compareState(t, Queued, current, failedJob.ID)
+		compareState(tt, Done, current, timedJob.ID)
+		compareState(tt, Running, current, quickJob.ID)
+		compareState(tt, Queued, current, failedJob.ID)
 
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	})
 
-	t.Run("should fail the second job", func(tt *testing.T) {
-		current := pipeline.State()
+	time.Sleep(interStepDelay)
 
-		compareState(t, Done, current, timedJob.ID)
-		compareState(t, Done, current, quickJob.ID)
-		compareState(t, Failed, current, failedJob.ID)
+	t.Run("should fail the third job", func(tt *testing.T) {
+		current := mustGetPipelineState(tt, pipeline)
+
+		compareState(tt, Done, current, timedJob.ID)
+		compareState(tt, Done, current, quickJob.ID)
+		compareState(tt, Failed, current, failedJob.ID)
 	})
-
 }
 
 func compareState(t *testing.T, want JobState, pipelineState PipelineState, id string) {
@@ -93,7 +98,7 @@ func compareState(t *testing.T, want JobState, pipelineState PipelineState, id s
 	}
 
 	if want != got {
-		t.Fatalf("(state) got '%s', want '%s'")
+		t.Fatalf("(state) got '%s', want '%s'", got, want)
 	}
 }
 
@@ -106,4 +111,15 @@ func mustCreateJob(t *testing.T, fn JobFn) *Job {
 	}
 
 	return job
+}
+
+func mustGetPipelineState(t *testing.T, pipeline *Pipeline) PipelineState {
+	t.Helper()
+
+	state, err := pipeline.State()
+	if err != nil {
+		t.Fatalf("error getting pipeline state: %v", err)
+	}
+
+	return state
 }
