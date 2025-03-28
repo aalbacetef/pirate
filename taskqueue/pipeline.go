@@ -9,6 +9,7 @@ import (
 type Event struct {
 	Type EventType
 	Job  *Job
+	ID   string
 
 	responseCh chan<- PipelineState
 }
@@ -84,7 +85,7 @@ func (pipeline *Pipeline) handleEvent(ctx context.Context, event Event) {
 
 	case QueryPipelineState:
 		state := PipelineState{
-			jobStates: make(map[string]JobState),
+			jobStates: make(map[string]JobState, len(pipeline.jobs)),
 		}
 
 		for _, job := range pipeline.jobs {
@@ -146,6 +147,7 @@ func (pipeline *Pipeline) execute(ctx context.Context, job *Job) {
 
 	pipeline.eventCh <- Event{
 		Type: JobEnded,
+		ID:   job.ID,
 	}
 }
 
@@ -157,6 +159,9 @@ func (pipeline *Pipeline) Start() error {
 }
 
 func (pipeline *Pipeline) Pause() error {
+	pipeline.eventCh <- Event{
+		Type: PipelinePaused,
+	}
 	return nil
 }
 
