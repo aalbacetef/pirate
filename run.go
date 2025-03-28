@@ -13,28 +13,17 @@ import (
 const tickInterval = 10 * time.Second
 
 func runScript(ctx context.Context, fname, contents string, env []string, l *slog.Logger) error {
-	fd, err := os.CreateTemp("", fname)
+	name, err := writeScript(l, fname, contents)
 	if err != nil {
-		return fmt.Errorf("could not create script: %w", err)
+		return err
 	}
-	name := fd.Name()
+
+	runCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	defer func() { cleanupFile(l, name) }()
 
-	wroteBytes, err := fd.WriteString(contents)
-	if err != nil {
-		return fmt.Errorf("error writing script: %w", err)
-	}
-
-	wantBytes := len([]byte(contents))
-
-	if wantBytes != wroteBytes {
-		return fmt.Errorf("expected %d bytes, wrote %d", wantBytes, wroteBytes)
-	}
-
-	fd.Close()
-
-	cmd := exec.CommandContext(ctx, "bash", name)
+	cmd := exec.CommandContext(runCtx, "bash", name)
 	cmd.Env = append(cmd.Env, env...)
 
 	stdout, stderr := newSafeBuffer(), newSafeBuffer()
@@ -51,7 +40,7 @@ func runScript(ctx context.Context, fname, contents string, env []string, l *slo
 	go func() {
 		for {
 			select {
-			case <-ctx.Done():
+			case <-runCtx.Done():
 				return
 			case <-ticker.C:
 				flush(stdout, stderr, l)
@@ -73,6 +62,30 @@ func runScript(ctx context.Context, fname, contents string, env []string, l *slo
 	flush(stdout, stderr, l)
 
 	return nil
+}
+
+func writeScript(l *slog.Logger, fname string, contents string) (string, error) {
+	fd, err := os.CreateTemp("", fname)
+	if err != nil {
+		return "", fmt.Errorf("could not create script: %w", err)
+	}
+	name := fd.Name()
+
+	wroteBytes, err := fd.WriteString(contents)
+	if err != nil {
+		cleanupFile(l, name)
+		return name, fmt.Errorf("error writing script: %w", err)
+	}
+
+	wantBytes := len([]byte(contents))
+
+	if wantBytes != wroteBytes {
+		return "", fmt.Errorf("expected %d bytes, wrote %d", wantBytes, wroteBytes)
+	}
+
+	fd.Close()
+
+	return name, nil
 }
 
 func cleanupFile(l *slog.Logger, name string) {
