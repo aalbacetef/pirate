@@ -6,26 +6,6 @@ import (
 	"time"
 )
 
-type Event struct {
-	Type EventType
-	Job  *Job
-	ID   string
-
-	responseCh chan<- PipelineState
-}
-
-type EventType string
-
-const (
-	JobAdded           EventType = "job-added"
-	JobEnded           EventType = "job-ended"
-	PipelineStarted    EventType = "pipeline-started"
-	PipelinePaused     EventType = "pipeline-ended"
-	QueryPipelineState EventType = "query-pipeline-state"
-)
-
-const eventChanSize = 100
-
 func NewPipeline(name string) (*Pipeline, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -94,10 +74,10 @@ func (pipeline *Pipeline) handleEvent(ctx context.Context, event Event) {
 
 		event.responseCh <- state
 
-	case PipelineStarted:
+	case SchedulerStarted:
 		pipeline.isStarted = true
 
-	case PipelinePaused:
+	case SchedulerPaused:
 		pipeline.isStarted = false
 		if pipeline.cancel != nil {
 			pipeline.cancel()
@@ -157,7 +137,7 @@ func (pipeline *Pipeline) execute(ctx context.Context, job *Job) {
 
 func (pipeline *Pipeline) Start() error {
 	pipeline.eventCh <- Event{
-		Type: PipelineStarted,
+		Type: SchedulerStarted,
 	}
 
 	return nil
@@ -165,7 +145,7 @@ func (pipeline *Pipeline) Start() error {
 
 func (pipeline *Pipeline) Pause() error {
 	pipeline.eventCh <- Event{
-		Type: PipelinePaused,
+		Type: SchedulerPaused,
 	}
 
 	return nil
