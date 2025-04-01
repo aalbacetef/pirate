@@ -82,6 +82,10 @@ func (drop *Drop) runEventLoop(ctx context.Context) {
 func (drop *Drop) handleEvent(ctx context.Context, event Event) {
 	switch event.Type {
 	case JobAdded:
+		if !drop.isStarted {
+			return
+		}
+
 		isAlreadyRunning := drop.currentJob != nil
 
 		event.isRunningCh <- isAlreadyRunning
