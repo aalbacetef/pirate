@@ -1,4 +1,4 @@
-package taskqueue
+package scheduler
 
 import (
 	"context"
@@ -106,6 +106,7 @@ func (pipeline *Pipeline) handleEvent(ctx context.Context, event Event) {
 	}
 }
 
+// runNextJob will run the next job in the queue. It is called on JobAdded and JobEnded.
 func (pipeline *Pipeline) runNextJob(ctx context.Context) {
 	if !pipeline.isStarted {
 		return
@@ -114,7 +115,9 @@ func (pipeline *Pipeline) runNextJob(ctx context.Context) {
 	index := pipeline.currentIndex
 	n := len(pipeline.jobs)
 
-	if index >= (n - 1) {
+	// no more jobs to run
+	isAtEnd := index >= (n - 1)
+	if isAtEnd {
 		return
 	}
 
@@ -131,6 +134,7 @@ func (pipeline *Pipeline) runNextJob(ctx context.Context) {
 		return
 	}
 
+	// current job already finished, run the next one.
 	pipeline.currentIndex++
 	job := pipeline.jobs[pipeline.currentIndex]
 	job.SetState(Running)
@@ -155,6 +159,7 @@ func (pipeline *Pipeline) Start() error {
 	pipeline.eventCh <- Event{
 		Type: PipelineStarted,
 	}
+
 	return nil
 }
 
@@ -162,6 +167,7 @@ func (pipeline *Pipeline) Pause() error {
 	pipeline.eventCh <- Event{
 		Type: PipelinePaused,
 	}
+
 	return nil
 }
 
@@ -190,11 +196,10 @@ type PipelineState struct {
 }
 
 func (ps PipelineState) Check(jobID string) (JobState, error) {
-	for _jobID, jobState := range ps.jobStates {
-		if _jobID == jobID {
-			return jobState, nil
-		}
+	jobState, ok := ps.jobStates[jobID]
+	if !ok {
+		return "", JobNotFoundError{jobID}
 	}
 
-	return "", JobNotFoundError{jobID}
+	return jobState, nil
 }

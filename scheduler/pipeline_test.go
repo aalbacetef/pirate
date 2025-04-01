@@ -1,4 +1,4 @@
-package taskqueue
+package scheduler
 
 import (
 	"context"
