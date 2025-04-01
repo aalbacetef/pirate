@@ -3,6 +3,7 @@ package scheduler
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 var ErrJobDropped = errors.New("job dropped")
@@ -37,15 +38,18 @@ func (drop *Drop) Add(job *Job) error {
 		isRunningCh: isRunningCh,
 	}
 
+	const waitForResponseTimeout = 100 * time.Millisecond
+
 	select {
 	case isRunning := <-isRunningCh:
 		if isRunning {
 			return ErrJobDropped
 		}
 
+		return nil
+	case <-time.After(waitForResponseTimeout):
+		return errors.New("timed out waiting for response")
 	}
-
-	return nil
 }
 
 func (drop *Drop) Start() error {
@@ -93,12 +97,16 @@ func (drop *Drop) handleEvent(ctx context.Context, event Event) {
 
 	case SchedulerStarted:
 		drop.isStarted = true
+
 	case SchedulerPaused:
 		drop.isStarted = false
 		if drop.cancel != nil {
 			drop.cancel()
 			drop.cancel = nil
 		}
+
+	case QueryPipelineState:
+		return
 	}
 }
 

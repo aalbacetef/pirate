@@ -11,12 +11,14 @@ func TestDrop(t *testing.T) {
 	const jobDuration = 500 * time.Millisecond
 	drop := NewDrop()
 
-	drop.Start()
+	if err := drop.Start(); err != nil {
+		t.Fatalf("could not start scheduler: %v", err)
+	}
 
 	t.Run("it should execute the job", func(tt *testing.T) {
 		jobDoneChan := make(chan struct{}, 1)
 
-		singleJob := mustCreateJob(tt, func(ctx context.Context) error {
+		singleJob := mustCreateJob(tt, func(context.Context) error {
 			time.Sleep(jobDuration)
 			jobDoneChan <- struct{}{}
 
@@ -37,10 +39,10 @@ func TestDrop(t *testing.T) {
 	})
 
 	t.Run("it should drop jobs if one is running", func(tt *testing.T) {
-		const n = 3
-		jobs := make([]*Job, 0, n)
+		const jobCount = 3
+		jobs := make([]*Job, 0, jobCount)
 
-		for range n {
+		for range jobCount {
 			job := mustCreateJob(tt, func(context.Context) error {
 				return nil
 			})
@@ -54,7 +56,7 @@ func TestDrop(t *testing.T) {
 			tt.Fatalf("could not add job: %v", err)
 		}
 
-		for k := range n {
+		for k := range jobCount {
 			err := drop.Add(jobs[k])
 			if !errors.Is(err, ErrJobDropped) {
 				tt.Fatalf("expected '%v', got '%v'", ErrJobDropped, err)
