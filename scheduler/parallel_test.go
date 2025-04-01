@@ -40,7 +40,7 @@ func TestParallelJobs(t *testing.T) {
 		done <- struct{}{}
 	}()
 
-	t.Run("it should've executed all jobs", func(tt *testing.T) {
+	t.Run("it should execute all jobs", func(tt *testing.T) {
 		select {
 		case <-time.After(jobDuration + (50 * time.Millisecond)):
 			tt.Fatalf("timed out waiting for jobs to run")
