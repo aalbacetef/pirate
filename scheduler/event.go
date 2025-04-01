@@ -5,7 +5,8 @@ type Event struct {
 	Job  *Job
 	ID   string
 
-	responseCh chan<- PipelineState
+	responseCh  chan<- PipelineState
+	isRunningCh chan<- bool
 }
 
 type EventType string
