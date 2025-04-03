@@ -1,0 +1,18 @@
+name: Deploy
+
+on:
+  push:
+    tags: 
+      - '*'
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: gacts/install-podman@v1
+      - run: make build-img 
