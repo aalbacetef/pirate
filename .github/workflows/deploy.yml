@@ -1,0 +1,40 @@
+name: Deploy
+
+on:
+  push:
+    tags: 
+      - '*'
+    branches:
+      - master
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - run: 'sudo apt update && sudo apt install -yq make podman'
+      - name: set image tag version
+        run: |
+          TAG_VERSION=latest 
+          if test "${{ github.ref_type }}" = "tag"; then
+            TAG_VERSION="${{ github.ref_name }}"
+          fi 
+
+          echo "TAG_NAME=aalbacetef/pirate" >> $GITHUB_ENV
+          echo "TAG_VERSION=$TAG_VERSION" >> $GITHUB_ENV
+          echo "tag version: $TAG_VERSION"
+
+      - name: build image 
+        run: |
+          make build-img TAG_NAME="${{ env.TAG_NAME }}" TAG_VERSION="${{ env.TAG_VERSION }}"
+
+      - name: login to registry
+        run: |
+          podman login \
+            -u "${{ vars.REGISTRY_USER }}" \
+            -p "${{ secrets.REGISTRY_TOKEN }}" ${{ vars.REGISTRY_NAME }}
+
+      - name: push image to registry
+        run: |
+          podman push ${{ env.TAG_NAME }}:${{ env.TAG_VERSION }} ${{ vars.REGISTRY_NAME }}/${{ env.TAG_NAME }}:${{ env.TAG_VERSION }}

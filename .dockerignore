@@ -6,3 +6,4 @@ Dockerfile
 testing.Dockerfile
 *.out
 /*.html
+dockerfiles/
