@@ -8,7 +8,7 @@ import (
 
 var ErrJobDropped = errors.New("job dropped")
 
-func NewDrop(name string) *Drop {
+func NewDrop(name string) (*Drop, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	drop := &Drop{
@@ -18,7 +18,7 @@ func NewDrop(name string) *Drop {
 
 	go drop.runEventLoop(ctx)
 
-	return drop
+	return drop, nil
 }
 
 type Drop struct {

@@ -13,7 +13,7 @@ func (parallel *Parallel) Name() string {
 	return parallel.name
 }
 
-func NewParallel(name string) *Parallel {
+func NewParallel(name string) (*Parallel, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	parallel := &Parallel{
@@ -24,7 +24,7 @@ func NewParallel(name string) *Parallel {
 
 	go parallel.runEventLoop(ctx)
 
-	return parallel
+	return parallel, nil
 }
 
 func (parallel *Parallel) Start() error {

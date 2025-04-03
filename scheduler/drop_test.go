@@ -9,7 +9,10 @@ import (
 
 func TestDrop(t *testing.T) {
 	const jobDuration = 500 * time.Millisecond
-	drop := NewDrop("test-handler")
+	drop, err := NewDrop("test-handler")
+	if err != nil {
+		t.Fatalf("could not create scheduler: %v", err)
+	}
 
 	if err := drop.Start(); err != nil {
 		t.Fatalf("could not start scheduler: %v", err)

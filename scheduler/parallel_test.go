@@ -8,7 +8,11 @@ import (
 )
 
 func TestParallelJobs(t *testing.T) {
-	parallel := NewParallel("test-handler")
+	parallel, err := NewParallel("test-handler")
+	if err != nil {
+		t.Fatalf("could not create scheduler: %v", err)
+	}
+
 	if err := parallel.Start(); err != nil {
 		t.Fatalf("could not start scheduler: %v", err)
 	}
@@ -17,14 +21,16 @@ func TestParallelJobs(t *testing.T) {
 		jobDuration = 500 * time.Millisecond
 		n           = 5
 	)
+
 	jobs := make([]*Job, 0, n)
-	wg := sync.WaitGroup{}
-	wg.Add(n)
+
+	waitgroup := sync.WaitGroup{}
+	waitgroup.Add(n)
 
 	for k := range n {
 		jobs = append(jobs, mustCreateJob(t, func(context.Context) error {
 			time.Sleep(jobDuration)
-			wg.Done()
+			waitgroup.Done()
 			return nil
 		}))
 
@@ -35,7 +41,7 @@ func TestParallelJobs(t *testing.T) {
 
 	done := make(chan struct{}, 1)
 	go func() {
-		wg.Wait()
+		waitgroup.Wait()
 		done <- struct{}{}
 	}()
 
