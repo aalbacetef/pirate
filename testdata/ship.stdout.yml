@@ -8,6 +8,7 @@ server:
 handlers:
   - endpoint: /webhooks/simple
     name: simple webhook handler
+    policy: parallel
     auth:
       validator: list
       token: 
@@ -23,6 +24,7 @@ handlers:
 
   - endpoint: /new-release
     name: new release
+    policy: queue
     auth:
       validator: command
       run: 'exit 1'

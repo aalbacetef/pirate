@@ -25,6 +25,9 @@ handlers:
   - endpoint: /webhooks/simple
     name: simple webhook handler
 
+    # will drop any incoming webhooks if there is already one running
+    policy: drop 
+
     # authenticates the handler based on the value of the X-Authorization header 
     auth:
       # a list validator will check if the token matches one of .token
@@ -42,7 +45,8 @@ handlers:
 
 
   - endpoint: /new-release
-    name: new release
+    name: new release 
+    policy: queue # will queue incoming webhooks
     auth:
       # a command validator will pass if the run block exits with code = 0.
       validator: command
