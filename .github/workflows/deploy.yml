@@ -14,5 +14,5 @@ jobs:
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v4
-      - uses: gacts/install-podman@v1
+      - run: 'sudo apt update && sudo apt install -yq make podman'
       - run: make build-img 
