@@ -34,7 +34,8 @@ func TestServerInit(t *testing.T) {
 	})
 
 	t.Run("cleanup was set", func(tt *testing.T) {
-		wantN := 1 // there should be the single logging cleanup function
+		// there should be the single logging cleanup function
+		wantN := 1 + len(server.schedulers)
 		gotN := len(server.cleanup)
 
 		if gotN != wantN {
