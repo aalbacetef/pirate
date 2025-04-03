@@ -95,12 +95,6 @@ func (pipeline *Pipeline) runNextJob(ctx context.Context) {
 	index := pipeline.currentIndex
 	n := len(pipeline.jobs)
 
-	// no more jobs to run
-	isAtEnd := index >= (n - 1)
-	if isAtEnd {
-		return
-	}
-
 	current := pipeline.jobs[index]
 	state := current.GetState()
 
@@ -111,6 +105,11 @@ func (pipeline *Pipeline) runNextJob(ctx context.Context) {
 	if state == Queued {
 		current.SetState(Running)
 		go pipeline.execute(ctx, current)
+		return
+	}
+
+	isAtEnd := index >= (n - 1)
+	if isAtEnd {
 		return
 	}
 
