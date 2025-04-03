@@ -36,12 +36,26 @@ test-cleanup:
 
 .PHONY: tidy fmt mk-bin-dir build test lint test-coverage
 
+##############
+# Deployment #
+##############
+
+TAG_NAME = aalbacetef/pirate
+TAG_VERSION ?= latest
+
+build-img:
+	podman build -t $(TAG_NAME):$(TAG_VERSION) -f dockerfiles/build.Dockerfile .
+
+build-trimmed-img:
+	podman build -t $(TAG_NAME):$(TAG_VERSION)-trimmed -f dockerfiles/build.trimmed.Dockerfile .
+
+
 #######################
 # Integration testing #
 #######################
 
 build-testing-img:
-	$(runner) build -t pirate:testing -f testing.Dockerfile .
+	$(runner) build -t pirate:testing -f dockerfiles/testing.Dockerfile .
 
 container_opts = 
 
