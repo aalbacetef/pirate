@@ -36,11 +36,20 @@ type Logging struct {
 
 // Handler waits for a webhook handler to come in and runs it if authenatication passes.
 type Handler struct {
-	Auth     Auth   `yaml:"auth"`
-	Endpoint string `yaml:"endpoint"`
-	Name     string `yaml:"name"`
-	Run      string `yaml:"run"`
+	Auth     Auth            `yaml:"auth"`
+	Endpoint string          `yaml:"endpoint"`
+	Name     string          `yaml:"name"`
+	Run      string          `yaml:"run"`
+	Policy   ExecutionPolicy `yaml:"policy,omitempty"`
 }
+
+type ExecutionPolicy string
+
+const (
+	Drop     ExecutionPolicy = "drop"
+	Parallel ExecutionPolicy = "parallel"
+	Queue    ExecutionPolicy = "queue"
+)
 
 // Config defines the configuration for the pirate server and its handlers.
 type Config struct {
@@ -72,6 +81,13 @@ func (cfg Config) Valid() error { //nolint:gocognit
 		label := fmt.Sprintf("handler[%d]", k)
 		if handler.Endpoint == "" {
 			return MustBeSetError{label + ".endpoint"}
+		}
+
+		switch handler.Policy {
+		default:
+			return MustBeSetError{label + ".policy"}
+		case Queue, Parallel, Drop:
+			break
 		}
 
 		switch handler.Auth.Validator {
@@ -205,6 +221,12 @@ func loadConfig(r io.Reader) (Config, error) {
 	// set default values if any
 	if cfg.Server.Host == "" {
 		cfg.Server.Host = defaultHost
+	}
+
+	for k, handler := range cfg.Handlers {
+		if handler.Policy == "" {
+			cfg.Handlers[k].Policy = defaultHandlerPolicy
+		}
 	}
 
 	if err := cfg.Valid(); err != nil {

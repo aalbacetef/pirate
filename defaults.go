@@ -14,4 +14,7 @@ const (
 
 	// Default request timeout.
 	defaultRequestTimeout = 5 * time.Minute
+
+	// Default Handler policy.
+	defaultHandlerPolicy = Queue
 )

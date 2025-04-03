@@ -28,6 +28,7 @@ func TestLoad(t *testing.T) {
 		{
 			Endpoint: "/webhooks/simple",
 			Name:     "simple webhook handler",
+			Policy:   Parallel,
 			Run: `` +
 				`SOME_VAR="some-variable"` + "\n" +
 				`echo "SOME_VAR: $SOME_VAR"` + "\n" +
@@ -38,6 +39,7 @@ func TestLoad(t *testing.T) {
 		{
 			Endpoint: "/new-release",
 			Name:     "new release",
+			Policy:   Queue,
 			Run: `` +
 				`echo "this should never run!"` + "\n" +
 				`./some-script.sh $("$PIRATE_BODY" | jq -r '.token')`,
@@ -66,7 +68,16 @@ func TestLoadsDefaults(t *testing.T) {
 
 	t.Run("default request timeout", func(tt *testing.T) {
 		got := cfg.Server.RequestTimeout.String()
-		want := cfg.Server.RequestTimeout.String()
+		want := defaultRequestTimeout.String()
+
+		if got != want {
+			tt.Fatalf("got '%s', want '%s'", got, want)
+		}
+	})
+
+	t.Run("default policy was set", func(tt *testing.T) {
+		got := cfg.Handlers[0].Policy
+		want := defaultHandlerPolicy
 
 		if got != want {
 			tt.Fatalf("got '%s', want '%s'", got, want)
@@ -183,6 +194,10 @@ func testCompareHandler(t *testing.T, k int, handler, wantHandler *Handler) {
 
 	if handler.Name != wantHandler.Name {
 		t.Fatalf("(handlers[%d].Name) got '%s', want '%s'", k, handler.Name, wantHandler.Name)
+	}
+
+	if handler.Policy != wantHandler.Policy {
+		t.Fatalf("(handlers[%d].Policy) got '%s', want '%s'", k, handler.Policy, wantHandler.Policy)
 	}
 
 	gotLines := strings.Split(strings.TrimSpace(handler.Run), "\n")

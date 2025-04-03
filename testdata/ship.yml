@@ -8,6 +8,7 @@ server:
 handlers:
   - endpoint: /webhooks/simple
     name: simple webhook handler
+    policy: parallel
     auth:
       validator: list
       token: 
