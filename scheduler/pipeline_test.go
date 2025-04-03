@@ -90,6 +90,42 @@ func TestPipeline(t *testing.T) { //nolint:funlen
 	})
 }
 
+func TestPipelineSingleJob(t *testing.T) {
+	jobDuration := 30 * time.Second
+
+	singleJob := mustCreateJob(t, func(_ context.Context) error {
+		time.Sleep(jobDuration)
+		return nil
+	})
+
+	pipeline, err := NewPipeline("handler-1")
+	if err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	if err := pipeline.Start(); err != nil {
+		t.Fatalf("could not start pipeline: %v", err)
+	}
+
+	start := time.Now()
+	if err := pipeline.Add(singleJob); err != nil {
+		t.Fatalf("could not add to pipeline: %v", err)
+	}
+
+	t.Run("should only be running first job", func(tt *testing.T) {
+		current := mustGetPipelineState(tt, pipeline)
+
+		now := time.Now()
+		elapsed := now.Sub(start)
+
+		if elapsed >= jobDuration {
+			tt.Fatalf("took too long to reach test: %s", elapsed.String())
+		}
+
+		compareState(tt, Running, current, singleJob.ID)
+	})
+}
+
 func compareState(t *testing.T, want JobState, pipelineState PipelineState, id string) {
 	t.Helper()
 
