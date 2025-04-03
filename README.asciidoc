@@ -76,7 +76,22 @@ handlers:
 
 == Installation
 
-TBC
+=== Docker 
+
+We provide a docker image for ease of use. The recommended way of using it is to mount your ship config as well as any needed directories. Don't forget to set host to `0.0.0.0`. Some users might find it useful to set the logging to standard output, while others would prefer to mount the log directory.
+
+Example:
+
+[source,bash]
+----
+docker run --rm -it \
+  -v ./logs/:/app/logs \
+  -v ./ship.yml:/app/ship.yml \
+  -v /var/www/html:/app/blog-html \
+  -p 39390:39390 \
+  aalbacetef/pirate:latest
+----
+
 
 == Configuration
 
