@@ -22,15 +22,20 @@ jobs:
             TAG_VERSION="${{ github.ref_name }}"
           fi 
 
+          echo "TAG_NAME=${{ vars.REGISTRY_NAME }}/aalbacetef/pirate" >> $GITHUB_ENV
           echo "TAG_VERSION=$TAG_VERSION" >> $GITHUB_ENV
           echo "tag version: $TAG_VERSION"
-      - run: |
-          make build-img TAG_VERSION="${{ env.TAG_VERSION }}"
 
-      - run: |
+      - name: build image 
+        run: |
+          make build-img TAG_NAME="${{ env.TAG_NAME }}" TAG_VERSION="${{ env.TAG_VERSION }}"
+
+      - name: login to registry
+        run: |
           podman login \
             -u "${{ vars.REGISTRY_USER }}" \
             -p "${{ secrets.REGISTRY_TOKEN }}" ${{ vars.REGISTRY_NAME }}
 
-      - run: |
-          podman push aalbacetef/pirate:${{ env.TAG_VERSION }} ${{ vars.REGISTRY_NAME }}/aalbacetef/pirate:${{ env.TAG_VERSION }} 
+      - name: push image to registry
+        run: |
+          podman push ${{ env.TAG_NAME }}:${{ env.TAG_VERSION }} 

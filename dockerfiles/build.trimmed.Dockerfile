@@ -1,4 +1,5 @@
 FROM golang:1.24-bookworm AS base 
+LABEL org.opencontainers.image.source https://github.com/aalbacetef/pirate
 
 WORKDIR /build 
 
