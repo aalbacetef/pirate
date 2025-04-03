@@ -11,7 +11,7 @@ COPY ./scheduler/ ./scheduler/
 RUN go build -trimpath -ldflags='-w -s' ./cmd/pirate/
 
 FROM debian:bookworm AS final 
-LABEL org.opencontainers.image.source https://github.com/aalbacetef/pirate
+LABEL org.opencontainers.image.source=https://github.com/aalbacetef/pirate
 
 WORKDIR /app 
 
