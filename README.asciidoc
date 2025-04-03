@@ -40,6 +40,9 @@ handlers:
   - endpoint: /webhooks/simple
     name: simple webhook handler
 
+    # optional: handler execution policy, one of: drop, queue, parallel. Defaults to queue.
+    policy: drop 
+
     # authenticates the handler based on the value of the X-Authorization header 
     auth:
       # a list validator will check if the token matches one of .token
@@ -58,6 +61,7 @@ handlers:
 
   - endpoint: /new-release
     name: new release
+    policy: queue
     auth:
       # a command validator will pass if the run block exits with code = 0.
       validator: command
@@ -120,6 +124,7 @@ The `handlers` section defines webhook endpoints, authentication, and execution 
 handlers:
   - endpoint: /webhooks/simple
     name: simple webhook handler
+    policy: drop
     auth:
       validator: list
       token: 
@@ -134,9 +139,13 @@ Each handler includes:
 
 * *`endpoint`* (required) - The URL path for this webhook (e.g., `/webhooks/simple`).
 * *`name`* (required) - A human-readable name for the handler.
+* *`policy`* (optional) - Execution policy. One of "drop", "parallel", "queue". Defaults to "queue". 
+** drop: if webhook events come in while the handler is already running, they will be dropped.
+** parallel: handlers will run as webhooks come in.
+** queue: handlers will be queued as they come in.
 * *`auth`* (required, one of `list` or `command`) - Authentication method:
-  - *`validator: list`* - Checks if the `X-Authorization` header matches one of the provided tokens.
-  - *`validator: command`* - Runs a script and passes authentication if it exits with `0`.
+** *`validator: list`* - Checks if the `X-Authorization` header matches one of the provided tokens.
+** *`validator: command`* - Runs a script and passes authentication if it exits with `0`.
 * *`run`* (required) - A shell script executed when the webhook is triggered. Available environment variables:
 ** `$PIRATE_BODY`: The request body.
 ** `$PIRATE_HEADERS`: All request headers.

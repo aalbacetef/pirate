@@ -13,17 +13,18 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/aalbacetef/pirate/scheduler"
 )
 
 type Server struct {
 	// Should be READ only after initialization.
 	cfg Config
 
-	logger *slog.Logger
-
+	logger            *slog.Logger
 	validationTimeout time.Duration
-
-	cleanup []func()
+	cleanup           []func()
+	schedulers        []Scheduler
 }
 
 func (srv *Server) Close() {
@@ -42,12 +43,22 @@ const (
 	filePerms                = 0o644
 )
 
+type Scheduler interface {
+	Start() error
+	Pause() error
+	Name() string
+	Add(*scheduler.Job) error
+}
+
 // @TODO: handle log to Stdout.
 func NewServer(cfg Config) (*Server, error) {
 	fd, cleanupFn, err := initializeLogging(cfg.Server.Logging.Dir)
 	if err != nil {
 		return nil, err
 	}
+
+	cleanup := make([]func(), 0, 1+len(cfg.Handlers))
+	cleanup = append(cleanup, cleanupFn)
 
 	srv := &Server{
 		cfg: cfg,
@@ -58,9 +69,54 @@ func NewServer(cfg Config) (*Server, error) {
 		validationTimeout: defaultValidationTimeout,
 	}
 
-	srv.cleanup = append(srv.cleanup, cleanupFn)
+	schedulers := make([]Scheduler, 0, len(cfg.Handlers))
+	for k, handler := range cfg.Handlers {
+		name := handler.Name
+
+		sched, err := makeScheduler(name, handler.Policy)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"could not create scheduler(name=%s,policy=%s): %w",
+				name, handler.Policy, err,
+			)
+		}
+
+		schedulers = append(schedulers, sched)
+		if err := schedulers[k].Start(); err != nil {
+			return nil, fmt.Errorf(
+				"failed to start scheduler(name=%s): %w",
+				name, err,
+			)
+		}
+
+		cleanup = append(cleanup, func() {
+			if err := schedulers[k].Pause(); err != nil {
+				srv.logger.Error(
+					"could not pause scheduler",
+					"name", name,
+					"error", err,
+				)
+			}
+		})
+	}
+
+	srv.cleanup = cleanup
+	srv.schedulers = schedulers
 
 	return srv, nil
+}
+
+func makeScheduler(name string, policy ExecutionPolicy) (Scheduler, error) { //nolint:ireturn
+	switch policy {
+	case Queue:
+		return scheduler.NewPipeline(name) //nolint:wrapcheck
+	case Parallel:
+		return scheduler.NewParallel(name) //nolint:wrapcheck
+	case Drop:
+		return scheduler.NewDrop(name) //nolint:wrapcheck
+	default:
+		return nil, fmt.Errorf("unknown policy: '%s'", policy)
+	}
 }
 
 const (
@@ -190,7 +246,7 @@ func (srv *Server) HandleRequest(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// we don't pass the context as Do should run in the background independent of the request.
-	go srv.Do(&handler, headers, payload) //nolint: contextcheck
+	go srv.Do(&handler, headers, payload)
 
 	w.WriteHeader(http.StatusOK)
 }
@@ -264,11 +320,39 @@ func (srv *Server) Do(handler *Handler, headers map[string]string, payload []byt
 		fmt.Sprintf("PIRATE_BODY='%s'", string(payload)),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), DoTimeout)
-	defer cancel()
+	index := -1
+	for k, h := range srv.cfg.Handlers {
+		if h.Name == handler.Name {
+			index = k
+			break
+		}
+	}
 
-	if err := runScript(ctx, "pirate-webhook-script-*", handler.Run, env, l); err != nil {
-		l.Error("error running script", "error", err)
+	if index == -1 {
+		l.Error("could not find matching scheduler", "handler.Name", handler.Name)
+		return
+	}
+
+	sched := srv.schedulers[index]
+
+	job, err := scheduler.NewJob(func(runCtx context.Context) error {
+		ctx, cancel := context.WithTimeout(runCtx, DoTimeout)
+		defer cancel()
+
+		if err := runScript(ctx, "pirate-webhook-script-*", handler.Run, env, l); err != nil {
+			l.Error("error running script", "error", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		l.Error("could not create new job", "error", err)
+		return
+	}
+
+	if err := sched.Add(job); err != nil {
+		l.Error("could not add job to scheduler", "error", err)
 	}
 }
 
