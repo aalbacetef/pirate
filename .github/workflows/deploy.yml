@@ -9,16 +9,29 @@ on:
   pull_request:
 
 jobs:
-  build-image:
+  build-and-push:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v4
       - run: 'sudo apt update && sudo apt install -yq make podman'
-      - run: make build-img 
-      - run: 'podman save -o image-build.tar aalbacetef/pirate:latest' 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: build tarball
-          path: image-build.tar
+      - name: set image tag version
+        run: |
+          TAG_VERSION=latest 
+          if test "${{ github.ref_type }}" = "tag"; then
+            TAG_VERSION="${{ github.ref_name }}"
+          fi 
 
+          echo "TAG_VERSION=$TAG_VERSION" >> $GITHUB_ENV
+          echo "tag version: $TAG_VERSION"
+      - run: |
+          make build-img TAG_VERSION="${{ env.TAG_VERSION }}"
+
+      - run: |
+          podman login \
+            -u ${{ env.REGISTRY_USER }} \
+            -p ${{ secrets.REGISTRY_TOKEN }}  \
+            ${{ env.REGISTRY_NAME }}
+
+      - run: |
+          podman push aalbacetef/pirate:${{ env.TAG_VERSION }} ${{ env.REGISTRY_NAME }}/aalbacetef/pirate:${{ env.TAG_VERSION }}
