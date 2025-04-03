@@ -19,15 +19,15 @@ func TestParallelJobs(t *testing.T) {
 
 	const (
 		jobDuration = 500 * time.Millisecond
-		n           = 5
+		jobCount    = 5
 	)
 
-	jobs := make([]*Job, 0, n)
+	jobs := make([]*Job, 0, jobCount)
 
 	waitgroup := sync.WaitGroup{}
-	waitgroup.Add(n)
+	waitgroup.Add(jobCount)
 
-	for k := range n {
+	for k := range jobCount {
 		jobs = append(jobs, mustCreateJob(t, func(context.Context) error {
 			time.Sleep(jobDuration)
 			waitgroup.Done()

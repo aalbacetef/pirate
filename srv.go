@@ -73,44 +73,18 @@ func NewServer(cfg Config) (*Server, error) {
 	for k, handler := range cfg.Handlers {
 		name := handler.Name
 
-		var (
-			schedErr error
-			sched    Scheduler
-		)
-
-		switch handler.Policy {
-		case Queue:
-			sched, schedErr = scheduler.NewPipeline(handler.Name)
-			if schedErr != nil {
-				return nil, fmt.Errorf(
-					"failed to create scheduler(name=%s): %w",
-					name, schedErr,
-				)
-			}
-		case Parallel:
-			sched, schedErr = scheduler.NewParallel(handler.Name)
-			if schedErr != nil {
-				return nil, fmt.Errorf(
-					"failed to create scheduler(name=%s): %w",
-					name, schedErr,
-				)
-			}
-		case Drop:
-			sched, schedErr = scheduler.NewDrop(handler.Name)
-			if schedErr != nil {
-				return nil, fmt.Errorf(
-					"failed to create scheduler(name=%s): %w",
-					name, schedErr,
-				)
-			}
-		default:
-			return nil, fmt.Errorf("unknown policy: '%s'", handler.Policy)
+		sched, err := makeScheduler(name, handler.Policy)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"could not create scheduler(name=%s,policy=%s): %w",
+				name, handler.Policy, err,
+			)
 		}
 
 		schedulers = append(schedulers, sched)
 		if err := schedulers[k].Start(); err != nil {
 			return nil, fmt.Errorf(
-				"failed to start scheulder(name=%s): %w",
+				"failed to start scheduler(name=%s): %w",
 				name, err,
 			)
 		}
@@ -130,6 +104,19 @@ func NewServer(cfg Config) (*Server, error) {
 	srv.schedulers = schedulers
 
 	return srv, nil
+}
+
+func makeScheduler(name string, policy ExecutionPolicy) (Scheduler, error) { //nolint:ireturn
+	switch policy {
+	case Queue:
+		return scheduler.NewPipeline(name) //nolint:wrapcheck
+	case Parallel:
+		return scheduler.NewParallel(name) //nolint:wrapcheck
+	case Drop:
+		return scheduler.NewDrop(name) //nolint:wrapcheck
+	default:
+		return nil, fmt.Errorf("unknown policy: '%s'", policy)
+	}
 }
 
 const (

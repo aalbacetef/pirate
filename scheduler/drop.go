@@ -14,6 +14,7 @@ func NewDrop(name string) (*Drop, error) {
 	drop := &Drop{
 		eventCh: make(chan Event, eventChanSize),
 		cancel:  cancel,
+		name:    name,
 	}
 
 	go drop.runEventLoop(ctx)
