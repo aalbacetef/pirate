@@ -16,3 +16,9 @@ jobs:
       - uses: actions/checkout@v4
       - run: 'sudo apt update && sudo apt install -yq make podman'
       - run: make build-img 
+      - run: 'podman save -o image-build.tar aalbacetef/pirate:latest' 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build tarball
+          path: image-build.tar
+
