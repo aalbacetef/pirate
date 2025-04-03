@@ -33,4 +33,4 @@ jobs:
             -p "${{ secrets.REGISTRY_TOKEN }}" ${{ vars.REGISTRY_NAME }}
 
       - run: |
-          podman push aalbacetef/pirate:${{ vars.TAG_VERSION }} 
+          podman push aalbacetef/pirate:${{ env.TAG_VERSION }} 
