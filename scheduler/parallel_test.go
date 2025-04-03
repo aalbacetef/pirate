@@ -8,8 +8,7 @@ import (
 )
 
 func TestParallelJobs(t *testing.T) {
-
-	parallel := NewParallel()
+	parallel := NewParallel("test-handler")
 	if err := parallel.Start(); err != nil {
 		t.Fatalf("could not start scheduler: %v", err)
 	}

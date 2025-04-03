@@ -6,12 +6,18 @@ type Parallel struct {
 	isStarted bool
 	eventCh   chan Event
 	cancel    context.CancelFunc
+	name      string
 }
 
-func NewParallel() *Parallel {
+func (parallel *Parallel) Name() string {
+	return parallel.name
+}
+
+func NewParallel(name string) *Parallel {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	parallel := &Parallel{
+		name:    name,
 		cancel:  cancel,
 		eventCh: make(chan Event, eventChanSize),
 	}

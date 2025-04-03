@@ -9,7 +9,7 @@ import (
 
 func TestDrop(t *testing.T) {
 	const jobDuration = 500 * time.Millisecond
-	drop := NewDrop()
+	drop := NewDrop("test-handler")
 
 	if err := drop.Start(); err != nil {
 		t.Fatalf("could not start scheduler: %v", err)

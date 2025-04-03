@@ -10,7 +10,7 @@ func NewPipeline(name string) (*Pipeline, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	pipeline := &Pipeline{
-		Name:    name,
+		name:    name,
 		cancel:  cancel,
 		eventCh: make(chan Event, eventChanSize),
 	}
@@ -27,7 +27,11 @@ type Pipeline struct {
 	eventCh      chan Event
 	isStarted    bool
 
-	Name string
+	name string
+}
+
+func (pipeline *Pipeline) Name() string {
+	return pipeline.name
 }
 
 func (pipeline *Pipeline) Add(job *Job) error {

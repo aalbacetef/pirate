@@ -8,7 +8,7 @@ import (
 
 var ErrJobDropped = errors.New("job dropped")
 
-func NewDrop() *Drop {
+func NewDrop(name string) *Drop {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	drop := &Drop{
@@ -26,6 +26,11 @@ type Drop struct {
 	eventCh    chan Event
 	cancel     context.CancelFunc
 	isStarted  bool
+	name       string
+}
+
+func (drop *Drop) Name() string {
+	return drop.name
 }
 
 func (drop *Drop) Add(job *Job) error {
