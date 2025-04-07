@@ -24,7 +24,7 @@ server:
   # required: port on which to listen to 
   port: 3939
 
-  # optional: maximum time allowed for a request, defaults to 5m 
+  # optional: maximum time allowed for a request, defaults to 5m0s 
   request-timeout: '5m0s'
 
   logging:
@@ -38,7 +38,7 @@ server:
 
 
 handlers:
-  # all fields of the handler are required
+  # NOTE: all fields of the handler are required unless stated otherwise
   - endpoint: /webhooks/simple
     name: simple webhook handler
 
@@ -80,7 +80,9 @@ handlers:
 
 === Docker 
 
-We provide a docker image for ease of use. The recommended way of using it is to mount your ship config as well as any needed directories. Don't forget to set host to `0.0.0.0`. Some users might find it useful to set the logging to standard output, while others would prefer to mount the log directory.
+We provide a docker image for ease of use. 
+
+The recommended way of using it is to mount your ship config as well as any needed directories. 
 
 Example:
 
@@ -93,6 +95,11 @@ docker run --rm -it \
   -p 39390:39390 \
   aalbacetef/pirate:latest
 ----
+
+**Tips**
+
+Don't forget to set `server.host` to `0.0.0.0`. 
+Some users might find it useful to set the logging to standard output, while others would prefer to mount the log directory.
 
 
 == Configuration
@@ -156,10 +163,10 @@ Each handler includes:
 
 * *`endpoint`* (required) - The URL path for this webhook (e.g., `/webhooks/simple`).
 * *`name`* (required) - A human-readable name for the handler.
-* *`policy`* (optional) - Execution policy. One of "drop", "parallel", "queue". Defaults to "queue". 
-** drop: if webhook events come in while the handler is already running, they will be dropped.
-** parallel: handlers will run as webhooks come in.
-** queue: handlers will be queued as they come in.
+* *`policy`* (optional) - Execution policy. One of `drop`, `parallel`, `queue`. Defaults to `queue`. 
+** `drop`: if webhook events come in while the handler is already running, they will be dropped.
+** `parallel`: handlers will run as webhooks come in.
+** `queue`: handlers will be queued as they come in.
 * *`auth`* (required, one of `list` or `command`) - Authentication method:
 ** *`validator: list`* - Checks if the `X-Authorization` header matches one of the provided tokens.
 ** *`validator: command`* - Runs a script and passes authentication if it exits with `0`.
