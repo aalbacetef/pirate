@@ -115,7 +115,7 @@ The `server` section defines how Pirate listens for incoming webhook requests.
 server:
   host: localhost       # Optional: Defaults to 'localhost'
   port: 3939            # Required: The port Pirate listens on
-  request-timeout: '5m' # Optional: Defaults to 5 minutes
+  request-timeout: '5m0s' # Optional: Defaults to 5 minutes
 ----
 
 - *`host`* (optional) - The address Pirate binds to. Defaults to `localhost`.
