@@ -10,7 +10,9 @@ Note: this is a WIP.
 
 == Introduction 
 
-Pirate is a webhooks task runner. It aims to satisfy the need for running tasks based on webhook events.
+image::misc/pirate-ship.jpg[] 
+
+**Pirate** is a webhooks task runner. It aims to satisfy the need for running tasks based on webhook events.
 
 Example config (explained below).
 [source,yaml]
