@@ -5,9 +5,9 @@ server:
   host: localhost
 
   # required: port on which to listen to 
-  port: 39390
+  port: 3939
 
-  # optional: maximum time allowed for a request, defaults to 5m 
+  # optional: maximum time allowed for a request, defaults to 5m0s 
   request-timeout: '2m30s'
 
   logging:
@@ -21,11 +21,11 @@ server:
 
 
 handlers:
-  # all fields of the handler are required
+  # NOTE: all fields of the handler are required unless stated otherwise
   - endpoint: /webhooks/simple
     name: simple webhook handler
 
-    # will drop any incoming webhooks if there is already one running
+    # optional: handler execution policy, one of: drop, queue, parallel. Defaults to queue.
     policy: drop 
 
     # authenticates the handler based on the value of the X-Authorization header 
@@ -45,8 +45,8 @@ handlers:
 
 
   - endpoint: /new-release
-    name: new release 
-    policy: queue # will queue incoming webhooks
+    name: new release
+    policy: queue
     auth:
       # a command validator will pass if the run block exits with code = 0.
       validator: command

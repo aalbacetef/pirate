@@ -10,9 +10,11 @@ Note: this is a WIP.
 
 == Introduction 
 
-Pirate is a webhooks task runner. It aims to satisfy the need for running tasks based on webhook events.
+image::misc/pirate-ship.jpg[] 
 
-Example config (explained below).
+**Pirate** is a webhooks task runner. It aims to satisfy the need for running tasks based on webhook events.
+
+Example config (see link:ship.sample.yml[ship.sample.yml]).
 [source,yaml]
 ----
 server:
@@ -22,8 +24,8 @@ server:
   # required: port on which to listen to 
   port: 3939
 
-  # optional: maximum time allowed for a request, defaults to 5m 
-  request-timeout: '5m0s'
+  # optional: maximum time allowed for a request, defaults to 5m0s 
+  request-timeout: '2m30s'
 
   logging:
     # required: logging directory.
@@ -36,7 +38,7 @@ server:
 
 
 handlers:
-  # all fields of the handler are required
+  # NOTE: all fields of the handler are required unless stated otherwise
   - endpoint: /webhooks/simple
     name: simple webhook handler
 
@@ -78,7 +80,9 @@ handlers:
 
 === Docker 
 
-We provide a docker image for ease of use. The recommended way of using it is to mount your ship config as well as any needed directories. Don't forget to set host to `0.0.0.0`. Some users might find it useful to set the logging to standard output, while others would prefer to mount the log directory.
+We provide a docker image for ease of use. 
+
+The recommended way of using it is to mount your ship config as well as any needed directories. 
 
 Example:
 
@@ -91,6 +95,11 @@ docker run --rm -it \
   -p 39390:39390 \
   aalbacetef/pirate:latest
 ----
+
+**Tips**
+
+Don't forget to set `server.host` to `0.0.0.0`. 
+Some users might find it useful to set the logging to standard output, while others would prefer to mount the log directory.
 
 
 == Configuration
@@ -111,7 +120,7 @@ server:
 
 - *`host`* (optional) - The address Pirate binds to. Defaults to `localhost`.
 - *`port`* (required) - The port number Pirate listens on.
-- *`request-timeout`* (optional) - Maximum duration for processing a request (default: `5m`).
+- *`request-timeout`* (optional) - Maximum duration for processing a request. Defaults to `5m0s`.
 
 === Logging Configuration
 
@@ -123,10 +132,10 @@ logging:
   dir: './logs'  # Required: Log directory or `:stdout:` for console output
 ----
 
-- *`dir`* (required) - Directory where logs are saved.
-  - If the directory does not exist, Pirate creates it with **744 permissions**.
-  - Log files follow the format: `pirate.YYYY-MM-DD--HH:mm:ss.log`.
-  - Special value `:stdout:` writes logs to standard output.
+* *`dir`* (required) - Directory where logs are saved.
+** If the directory does not exist, Pirate creates it with **744 permissions**.
+** Log files follow the format: `pirate.YYYY-MM-DD--HH:mm:ss.log`.
+** Special value `:stdout:` writes logs to standard output.
 
 === Webhook Handlers
 
@@ -154,10 +163,10 @@ Each handler includes:
 
 * *`endpoint`* (required) - The URL path for this webhook (e.g., `/webhooks/simple`).
 * *`name`* (required) - A human-readable name for the handler.
-* *`policy`* (optional) - Execution policy. One of "drop", "parallel", "queue". Defaults to "queue". 
-** drop: if webhook events come in while the handler is already running, they will be dropped.
-** parallel: handlers will run as webhooks come in.
-** queue: handlers will be queued as they come in.
+* *`policy`* (optional) - Execution policy. One of `drop`, `parallel`, `queue`. Defaults to `queue`. 
+** `drop`: if webhook events come in while the handler is already running, they will be dropped.
+** `parallel`: handlers will run as webhooks come in.
+** `queue`: handlers will be queued as they come in.
 * *`auth`* (required, one of `list` or `command`) - Authentication method:
 ** *`validator: list`* - Checks if the `X-Authorization` header matches one of the provided tokens.
 ** *`validator: command`* - Runs a script and passes authentication if it exits with `0`.
@@ -206,4 +215,14 @@ run: |
   ./scripts/handle-new-release.sh
 ----
 
+== Notes On Security
 
+- We assume users are running **pirate** behind some reverse-proxy like NGINX so not much care has been given to reimplement features offered by it (for the MVP), like rate-limiting, but will be added in the future.
+
+- Don't use easy tokens for auth. If you need stricter checks use the command validator for more complex auth logic. In the future this will probably be passed a lot more request metadata.
+
+- **Pirate** creates its scripts by default under /tmp (which it cleans up after running). In the future this will be configurable.
+
+- **Pirate** responds with 404 even if validation fails, to not leak information. It does return a 405 if any method other than POST is used, but this shouldn't leak more information than only POST is accepted.
+
+This tool assumes you trust yourself. If you're exposing it to the internet, make sure you know what you're doing. You’re the captain here, pirate doesn’t stop you from walking the plank if you tell it to.
