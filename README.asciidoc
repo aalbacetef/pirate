@@ -225,3 +225,4 @@ run: |
 
 - **Pirate** responds with 404 even if validation fails, to not leak information. It does return a 405 if any method other than POST is used, but this shouldn't leak more information than only POST is accepted.
 
+This tool assumes you trust yourself. If you're exposing it to the internet, make sure you know what you're doing. You’re the captain here, pirate doesn’t stop you from walking the plank if you tell it to.
