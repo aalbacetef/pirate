@@ -215,4 +215,14 @@ run: |
   ./scripts/handle-new-release.sh
 ----
 
+== Notes On Security
+
+- We assume users are running **pirate** behind some reverse-proxy like NGINX so not much care has been given to reimplement features offered by it (for the MVP), like rate-limiting, but will be added in the future.
+
+- Don't use easy tokens for auth and if needed use the command validator for more complex auth requirements.
+
+- **Pirate** creates its scripts by default under /tmp (which it cleans up after running), in the future this will be configurable.
+
+- A webhooks task runner that you manage through yaml is a code executer (obviously), however if someone breaks into your box, **pirate** might not be the worst of your concerns.
+
 
