@@ -25,7 +25,7 @@ server:
   port: 3939
 
   # optional: maximum time allowed for a request, defaults to 5m0s 
-  request-timeout: '5m0s'
+  request-timeout: '2m30s'
 
   logging:
     # required: logging directory.
@@ -219,10 +219,9 @@ run: |
 
 - We assume users are running **pirate** behind some reverse-proxy like NGINX so not much care has been given to reimplement features offered by it (for the MVP), like rate-limiting, but will be added in the future.
 
-- Don't use easy tokens for auth and if needed use the command validator for more complex auth requirements.
+- Don't use easy tokens for auth. If you need stricter checks use the command validator for more complex auth logic. In the future this will probably be passed a lot more request metadata.
 
-- **Pirate** creates its scripts by default under /tmp (which it cleans up after running), in the future this will be configurable.
+- **Pirate** creates its scripts by default under /tmp (which it cleans up after running). In the future this will be configurable.
 
-- A webhooks task runner that you manage through yaml is a code executer (obviously), however if someone breaks into your box, **pirate** might not be the worst of your concerns.
-
+- **Pirate** responds with 404 even if validation fails, to not leak information. It does return a 405 if any method other than POST is used, but this shouldn't leak more information than only POST is accepted.
 
