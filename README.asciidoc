@@ -132,10 +132,10 @@ logging:
   dir: './logs'  # Required: Log directory or `:stdout:` for console output
 ----
 
-- *`dir`* (required) - Directory where logs are saved.
-  - If the directory does not exist, Pirate creates it with **744 permissions**.
-  - Log files follow the format: `pirate.YYYY-MM-DD--HH:mm:ss.log`.
-  - Special value `:stdout:` writes logs to standard output.
+* *`dir`* (required) - Directory where logs are saved.
+** If the directory does not exist, Pirate creates it with **744 permissions**.
+** Log files follow the format: `pirate.YYYY-MM-DD--HH:mm:ss.log`.
+** Special value `:stdout:` writes logs to standard output.
 
 === Webhook Handlers
 
