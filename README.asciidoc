@@ -120,7 +120,7 @@ server:
 
 - *`host`* (optional) - The address Pirate binds to. Defaults to `localhost`.
 - *`port`* (required) - The port number Pirate listens on.
-- *`request-timeout`* (optional) - Maximum duration for processing a request (default: `5m`).
+- *`request-timeout`* (optional) - Maximum duration for processing a request. Defaults to `5m0s`.
 
 === Logging Configuration
 
