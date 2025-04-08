@@ -1,0 +1,23 @@
+
+name: Release
+
+on:
+  push:
+    tags: 
+      - '*'
+
+env:
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.23.x'
+      - run: 'sudo apt update && sudo apt install -yq make'
+      - run: make release flags='-trimpath -ldflags="-w -s"'
