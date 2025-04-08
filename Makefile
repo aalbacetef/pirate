@@ -50,11 +50,9 @@ build-trimmed-img:
 	podman build -t $(TAG_NAME):$(TAG_VERSION)-trimmed -f dockerfiles/build.trimmed.Dockerfile .
 
 
-release: build
-	env CGO_ENABLED=0 \
-		gh release create $$(git describe --abbrev=0) \
-		--generate-notes \
-		bin/pirate
+release: 
+	env CGO_ENABLED=0 go build -trimpath -ldflags='-w -s' ./cmd/pirate/
+	gh release create $$(git describe --abbrev=0) --generate-notes pirate
 
 
 #######################
