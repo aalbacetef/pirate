@@ -5,11 +5,8 @@ on:
   push:
     tags: 
       - '*'
-  pull_request:
-
 env:
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
-
 
 jobs:
   build-and-push:

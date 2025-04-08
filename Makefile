@@ -52,7 +52,7 @@ build-trimmed-img:
 
 release: 
 	env CGO_ENABLED=0 go build -trimpath -ldflags='-w -s' ./cmd/pirate/
-	gh release create test-release --generate-notes pirate
+	gh release create $$(git describe --abbrev=0) --generate-notes pirate
 
 
 #######################
