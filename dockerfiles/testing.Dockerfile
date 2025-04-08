@@ -7,6 +7,7 @@ RUN apt update && apt install make bash curl
 
 COPY . . 
 
-RUN make build
+ENV CGO_ENABLED=0
+RUN make build flags='-trimpath -ldflags="-w -s"'
 
 CMD "/app/tasks/integration.test.sh"
