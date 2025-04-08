@@ -78,6 +78,12 @@ handlers:
 
 == Installation
 
+=== Binaries
+
+We provide pre-built binaries for Linux on the releases page.
+
+See link:https://github.com/aalbacetef/pirate/releases[Releases].
+
 === Docker 
 
 We provide a docker image for ease of use. 
