@@ -87,6 +87,12 @@ We provide pre-built binaries for Linux on the releases page.
 
 See link:https://github.com/aalbacetef/pirate/releases[Releases].
 
+You can also just run the following command:
+[source,bash]
+----
+curl -L -s -O https://github.com/aalbacetef/pirate/releases/download/v0.1.1/pirate && chmod +x ./pirate
+----
+
 === Docker 
 
 We provide a docker image for ease of use. 
