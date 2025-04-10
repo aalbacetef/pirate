@@ -46,9 +46,10 @@ func run(cfgPath string) error {
 	fmt.Println("listening on: ", addr)
 
 	httpSrv := &http.Server{
-		Addr:        addr,
-		ReadTimeout: cfg.Server.RequestTimeout.Duration,
-		Handler:     router,
+		Addr:           addr,
+		ReadTimeout:    cfg.Server.RequestTimeout.Duration,
+		Handler:        router,
+		MaxHeaderBytes: cfg.Server.MaxHeaderBytes.Value,
 	}
 
 	if listenErr := httpSrv.ListenAndServe(); listenErr != nil {

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,6 +59,7 @@ type Config struct {
 		Port           int      `yaml:"port"`
 		Logging        Logging  `yaml:"logging"`
 		RequestTimeout Duration `yaml:"request-timeout"`
+		MaxHeaderBytes ByteSize `yaml:"max-header-bytes"`
 	} `yaml:"server"`
 	Handlers []Handler `yaml:"handlers"`
 }
@@ -76,6 +78,9 @@ func (cfg Config) Valid() error { //nolint:gocognit
 	if cfg.Server.Logging.Dir == "" {
 		return MustBeSetError{"logging.dir"}
 	}
+	if cfg.Server.MaxHeaderBytes.Value <= 0 {
+		return MustBeSetError{"server.max-header-bytes"}
+	}
 
 	for k, handler := range cfg.Handlers {
 		label := fmt.Sprintf("handler[%d]", k)
@@ -87,7 +92,6 @@ func (cfg Config) Valid() error { //nolint:gocognit
 		default:
 			return MustBeSetError{label + ".policy"}
 		case Queue, Parallel, Drop:
-			break
 		}
 
 		switch handler.Auth.Validator {
@@ -218,6 +222,10 @@ func loadConfig(r io.Reader) (Config, error) {
 		cfg.Server.RequestTimeout.Duration = defaultRequestTimeout
 	}
 
+	if cfg.Server.MaxHeaderBytes.Value == 0 {
+		cfg.Server.MaxHeaderBytes.Value = 1024 // Default to 1k
+	}
+
 	// set default values if any
 	if cfg.Server.Host == "" {
 		cfg.Server.Host = defaultHost
@@ -279,4 +287,58 @@ func (d *Duration) MarshalYAML() ([]byte, error) {
 // UnmarshalYAML unmarshals the Duration from YAML.
 func (d *Duration) UnmarshalYAML(node *yaml.Node) error {
 	return d.UnmarshalJSON([]byte(node.Value))
+}
+
+type ByteSize struct {
+	Value int
+}
+
+func (b *ByteSize) UnmarshalYAML(node *yaml.Node) error {
+	value, err := ParseByteSize(node.Value)
+	if err != nil {
+		return err
+	}
+	b.Value = value
+	return nil
+}
+
+func ParseByteSize(value string) (int, error) {
+	if value == "" {
+		return 1024, nil // Default to 1k
+	}
+
+	multipliers := map[string]int{
+		"k": 1024,
+		"M": 1024 * 1024,
+		"G": 1024 * 1024 * 1024,
+	}
+
+	var multiplier int = 1
+	var numericPart string
+
+	switch {
+	case strings.HasSuffix(value, "k"):
+		multiplier = multipliers["k"]
+		numericPart = strings.TrimSuffix(value, "k")
+	case strings.HasSuffix(value, "M"):
+		multiplier = multipliers["M"]
+		numericPart = strings.TrimSuffix(value, "M")
+	case strings.HasSuffix(value, "G"):
+		multiplier = multipliers["G"]
+		numericPart = strings.TrimSuffix(value, "G")
+	default:
+		numericPart = value
+	}
+
+	num, err := strconv.Atoi(numericPart)
+	if err != nil {
+		return 0, fmt.Errorf("invalid numeric value: %w", err)
+	}
+
+	result := num * multiplier
+	if result < 0 {
+		return 0, errors.New("value overflowed maximum int size")
+	}
+
+	return result, nil
 }

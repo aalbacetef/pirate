@@ -218,3 +218,27 @@ func testCompareHandler(t *testing.T, k int, handler, wantHandler *Handler) {
 		}
 	}
 }
+func TestParseByteSize(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int
+		wantErr  bool
+	}{
+		{"", 1024, false},
+		{"5k", 5120, false},
+		{"10M", 10485760, false},
+		{"1G", 1073741824, false},
+		{"2048", 2048, false},
+		{"invalid", 0, true},
+	}
+
+	for _, test := range tests {
+		result, err := ParseByteSize(test.input)
+		if (err != nil) != test.wantErr {
+			t.Errorf("parseByteSize(%q) error = %v, wantErr %v", test.input, err, test.wantErr)
+		}
+		if result != test.expected {
+			t.Errorf("parseByteSize(%q) = %v, want %v", test.input, result, test.expected)
+		}
+	}
+}
