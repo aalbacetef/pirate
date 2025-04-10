@@ -2,7 +2,7 @@
 :author: Arturo Albacete
 :revdate: 2025-04-10
 :toc: macro
-:toclevels: 2 
+:toclevels: 5
 
 image:https://github.com/aalbacetef/pirate/actions/workflows/ci.yml/badge.svg[CI status] 
 image:https://img.shields.io/badge/License-BSD_3--Clause-blue.svg[License] 
