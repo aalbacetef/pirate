@@ -122,11 +122,14 @@ server:
   host: localhost       # Optional: Defaults to 'localhost'
   port: 3939            # Required: The port Pirate listens on
   request-timeout: '5m0s' # Optional: Defaults to 5 minutes
+  max-header-bytes: '1k'  # Optional: Maximum size of request headers. Defaults to 1k (1024 bytes)
+
 ----
 
 - *`host`* (optional) - The address Pirate binds to. Defaults to `localhost`.
 - *`port`* (required) - The port number Pirate listens on.
 - *`request-timeout`* (optional) - Maximum duration for processing a request. Defaults to `5m0s`.
+- *`max-header-bytes`* (optional) - Maximum size of request headers. Accepts values like `5k`, `10M`, `1G`, or plain numbers (e.g., `2048`). Defaults to `1k` (1024 bytes).
 
 === Logging Configuration
 

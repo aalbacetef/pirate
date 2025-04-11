@@ -17,4 +17,7 @@ const (
 
 	// Default Handler policy.
 	defaultHandlerPolicy = Queue
+
+	// Default max header bytes.
+	defaultMaxHeaderBytes = 1024
 )
