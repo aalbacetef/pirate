@@ -223,7 +223,7 @@ func loadConfig(r io.Reader) (Config, error) {
 	}
 
 	if cfg.Server.MaxHeaderBytes.Value == 0 {
-		cfg.Server.MaxHeaderBytes.Value = 1024 // Default to 1k
+		cfg.Server.MaxHeaderBytes.Value = defaultMaxHeaderBytes // Default to 1k
 	}
 
 	// set default values if any
@@ -289,56 +289,73 @@ func (d *Duration) UnmarshalYAML(node *yaml.Node) error {
 	return d.UnmarshalJSON([]byte(node.Value))
 }
 
+const (
+	Kilobyte = 1024
+	Megabyte = 1024 * Kilobyte
+	Gigabyte = 1024 * Megabyte
+)
+
 type ByteSize struct {
 	Value int
 }
 
-func (b *ByteSize) UnmarshalYAML(node *yaml.Node) error {
-	value, err := ParseByteSize(node.Value)
-	if err != nil {
-		return err
+// MarshalJSON marshals the Duration to JSON.
+func (b *ByteSize) MarshalJSON() ([]byte, error) {
+
+	bs := b.Value
+	if bs == 0 {
+		bs = 1024 // Default to 1k
 	}
-	b.Value = value
-	return nil
+
+	return []byte(strconv.Itoa(bs)), nil
 }
 
-func ParseByteSize(value string) (int, error) {
-	if value == "" {
-		return 1024, nil // Default to 1k
+// UnmarshalJSON unmarshals the Duration from JSON.
+func (b *ByteSize) UnmarshalJSON(data []byte) error {
+	str := strings.TrimSpace(string(data))
+
+	if str == "" {
+		b.Value = Kilobyte // Default to 1k
+		return nil
 	}
 
 	multipliers := map[string]int{
-		"k": 1024,
-		"M": 1024 * 1024,
-		"G": 1024 * 1024 * 1024,
+		"k": Kilobyte,
+		"M": Megabyte,
+		"G": Gigabyte,
 	}
 
-	var multiplier int = 1
-	var numericPart string
+	multiplier := 1
+	numericPart := ""
 
 	switch {
-	case strings.HasSuffix(value, "k"):
+	case strings.HasSuffix(str, "k"):
 		multiplier = multipliers["k"]
-		numericPart = strings.TrimSuffix(value, "k")
-	case strings.HasSuffix(value, "M"):
+		numericPart = strings.TrimSuffix(str, "k")
+	case strings.HasSuffix(str, "M"):
 		multiplier = multipliers["M"]
-		numericPart = strings.TrimSuffix(value, "M")
-	case strings.HasSuffix(value, "G"):
+		numericPart = strings.TrimSuffix(str, "M")
+	case strings.HasSuffix(str, "G"):
 		multiplier = multipliers["G"]
-		numericPart = strings.TrimSuffix(value, "G")
+		numericPart = strings.TrimSuffix(str, "G")
 	default:
-		numericPart = value
+		numericPart = str
 	}
 
 	num, err := strconv.Atoi(numericPart)
 	if err != nil {
-		return 0, fmt.Errorf("invalid numeric value: %w", err)
+		return fmt.Errorf("invalid numeric value: %w", err)
 	}
 
 	result := num * multiplier
 	if result < 0 {
-		return 0, errors.New("value overflowed maximum int size")
+		return errors.New("value overflowed maximum int size")
 	}
+	b.Value = result
 
-	return result, nil
+	return nil
+}
+
+func (b *ByteSize) UnmarshalYAML(node *yaml.Node) error {
+	return b.UnmarshalJSON([]byte(node.Value))
 }
