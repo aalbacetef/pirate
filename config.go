@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,6 +59,7 @@ type Config struct {
 		Port           int      `yaml:"port"`
 		Logging        Logging  `yaml:"logging"`
 		RequestTimeout Duration `yaml:"request-timeout"`
+		MaxHeaderBytes ByteSize `yaml:"max-header-bytes"`
 	} `yaml:"server"`
 	Handlers []Handler `yaml:"handlers"`
 }
@@ -76,6 +78,9 @@ func (cfg Config) Valid() error { //nolint:gocognit
 	if cfg.Server.Logging.Dir == "" {
 		return MustBeSetError{"logging.dir"}
 	}
+	if cfg.Server.MaxHeaderBytes.Value <= 0 {
+		return MustBeSetError{"server.max-header-bytes"}
+	}
 
 	for k, handler := range cfg.Handlers {
 		label := fmt.Sprintf("handler[%d]", k)
@@ -87,7 +92,6 @@ func (cfg Config) Valid() error { //nolint:gocognit
 		default:
 			return MustBeSetError{label + ".policy"}
 		case Queue, Parallel, Drop:
-			break
 		}
 
 		switch handler.Auth.Validator {
@@ -218,6 +222,10 @@ func loadConfig(r io.Reader) (Config, error) {
 		cfg.Server.RequestTimeout.Duration = defaultRequestTimeout
 	}
 
+	if cfg.Server.MaxHeaderBytes.Value == 0 {
+		cfg.Server.MaxHeaderBytes.Value = defaultMaxHeaderBytes // Default to 1k
+	}
+
 	// set default values if any
 	if cfg.Server.Host == "" {
 		cfg.Server.Host = defaultHost
@@ -279,4 +287,75 @@ func (d *Duration) MarshalYAML() ([]byte, error) {
 // UnmarshalYAML unmarshals the Duration from YAML.
 func (d *Duration) UnmarshalYAML(node *yaml.Node) error {
 	return d.UnmarshalJSON([]byte(node.Value))
+}
+
+const (
+	Kilobyte = 1024
+	Megabyte = 1024 * Kilobyte
+	Gigabyte = 1024 * Megabyte
+)
+
+type ByteSize struct {
+	Value int
+}
+
+// MarshalJSON marshals the Duration to JSON.
+func (b *ByteSize) MarshalJSON() ([]byte, error) {
+
+	bs := b.Value
+	if bs == 0 {
+		bs = 1024 // Default to 1k
+	}
+
+	return []byte(strconv.Itoa(bs)), nil
+}
+
+// UnmarshalJSON unmarshals the Duration from JSON.
+func (b *ByteSize) UnmarshalJSON(data []byte) error {
+	str := strings.TrimSpace(string(data))
+
+	if str == "" {
+		b.Value = Kilobyte // Default to 1k
+		return nil
+	}
+
+	multipliers := map[string]int{
+		"k": Kilobyte,
+		"M": Megabyte,
+		"G": Gigabyte,
+	}
+
+	multiplier := 1
+	numericPart := ""
+
+	switch {
+	case strings.HasSuffix(str, "k"):
+		multiplier = multipliers["k"]
+		numericPart = strings.TrimSuffix(str, "k")
+	case strings.HasSuffix(str, "M"):
+		multiplier = multipliers["M"]
+		numericPart = strings.TrimSuffix(str, "M")
+	case strings.HasSuffix(str, "G"):
+		multiplier = multipliers["G"]
+		numericPart = strings.TrimSuffix(str, "G")
+	default:
+		numericPart = str
+	}
+
+	num, err := strconv.Atoi(numericPart)
+	if err != nil {
+		return fmt.Errorf("invalid numeric value: %w", err)
+	}
+
+	result := num * multiplier
+	if result < 0 {
+		return errors.New("value overflowed maximum int size")
+	}
+	b.Value = result
+
+	return nil
+}
+
+func (b *ByteSize) UnmarshalYAML(node *yaml.Node) error {
+	return b.UnmarshalJSON([]byte(node.Value))
 }
