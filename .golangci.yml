@@ -84,15 +84,13 @@ linters-settings:
     ignore-tests: true 
     match-constant: true 
    
+  # TODO: consider exanding the amount of checks
   gocritic: 
     disable-all: true
     enabled-checks:
       - nestingReduce
       - unnamedResult
       - ruleguard
-    enabled-tags:
-      - diagnostic
-      - performance
 
   godot:
     scope: toplevel

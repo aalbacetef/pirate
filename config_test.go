@@ -218,3 +218,30 @@ func testCompareHandler(t *testing.T, k int, handler, wantHandler *Handler) {
 		}
 	}
 }
+func TestParseByteSize(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected int
+		wantErr  bool
+	}{
+		{"", 1024, false},         // Default value
+		{"5k", 5120, false},       // 5 kilobytes
+		{"10M", 10485760, false},  // 10 megabytes
+		{"1G", 1073741824, false}, // 1 gigabyte
+		{"2048", 2048, false},     // Plain numeric value
+		{"invalid", 0, true},      // Invalid input
+		{"-5k", 0, true},          // Negative value
+		{"1T", 0, true},           // Unsupported suffix
+	}
+
+	for _, test := range tests {
+		var b ByteSize
+		err := b.UnmarshalJSON([]byte(test.input))
+		if (err != nil) != test.wantErr {
+			t.Errorf("UnmarshalJSON(%q) error = %v, wantErr %v", test.input, err, test.wantErr)
+		}
+		if !test.wantErr && b.Value != test.expected {
+			t.Errorf("UnmarshalJSON(%q) = %v, want %v", test.input, b.Value, test.expected)
+		}
+	}
+}
