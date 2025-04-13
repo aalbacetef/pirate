@@ -301,7 +301,6 @@ type ByteSize struct {
 
 // MarshalJSON marshals the Duration to JSON.
 func (b *ByteSize) MarshalJSON() ([]byte, error) {
-
 	bs := b.Value
 	if bs == 0 {
 		bs = 1024 // Default to 1k
