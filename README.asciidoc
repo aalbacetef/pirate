@@ -17,6 +17,27 @@ image::misc/pirate-ship.jpg[]
 
 **Pirate** is a webhooks task runner. It aims to satisfy the need for running tasks based on webhook events.
 
+=== Running it
+
+**Command line flag**
+
+You can pass in a config file using the `-config` flag:
+
+[source,bash]
+----
+pirate -config ./path/to/ship.yml 
+----
+
+**Environment variable**
+
+You can set the environment variable: `PIRATE_CONFIG_PATH`
+
+**Default location**
+
+If running without a config flag, it will look for a `ship.yml` in the current directory. 
+
+
+
 Example config (see link:ship.sample.yml[ship.sample.yml]).
 [source,yaml]
 ----
