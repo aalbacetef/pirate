@@ -10,6 +10,9 @@ server:
   # optional: maximum time allowed for a request, defaults to 5m0s 
   request-timeout: '2m30s'
 
+  # optional: maximum size of the header bytes, defaults to 1k
+  max-header-bytes: '10M'
+
   logging:
     # required: logging directory.
     #   Will be created with permission 744 if it doesn't exist
