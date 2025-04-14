@@ -1,18 +1,42 @@
 = pirate 
+:author: Arturo Albacete
+:revdate: 2025-04-10
+:toc: macro
+:toclevels: 5
 
 image:https://github.com/aalbacetef/pirate/actions/workflows/ci.yml/badge.svg[CI status] 
 image:https://img.shields.io/badge/License-BSD_3--Clause-blue.svg[License] 
 image:https://goreportcard.com/badge/github.com/aalbacetef/pirate[Go Report Card]
 
-Note: this is a WIP.
+toc::[]
 
-:toc: 
 
 == Introduction 
 
 image::misc/pirate-ship.jpg[] 
 
 **Pirate** is a webhooks task runner. It aims to satisfy the need for running tasks based on webhook events.
+
+=== Running it
+
+**Command line flag**
+
+You can pass in a config file using the `-config` flag:
+
+[source,bash]
+----
+pirate -config ./path/to/ship.yml 
+----
+
+**Environment variable**
+
+You can set the environment variable: `PIRATE_CONFIG_PATH`
+
+**Default location**
+
+If running without a config flag, it will look for a `ship.yml` in the current directory. 
+
+
 
 Example config (see link:ship.sample.yml[ship.sample.yml]).
 [source,yaml]
@@ -26,6 +50,9 @@ server:
 
   # optional: maximum time allowed for a request, defaults to 5m0s 
   request-timeout: '2m30s'
+
+  # optional: maximum size of the header bytes, defaults to 1k
+  max-header-bytes: '10M'
 
   logging:
     # required: logging directory.
@@ -83,6 +110,12 @@ handlers:
 We provide pre-built binaries for Linux on the releases page.
 
 See link:https://github.com/aalbacetef/pirate/releases[Releases].
+
+You can also just run the following command:
+[source,bash]
+----
+curl -L -s -O https://github.com/aalbacetef/pirate/releases/download/v0.1.1/pirate && chmod +x ./pirate
+----
 
 === Docker 
 
