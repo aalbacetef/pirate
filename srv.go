@@ -278,11 +278,12 @@ func validateRequest(ctx context.Context, logger *slog.Logger, name string, auth
 			ctx,
 			"pirate-command-*",
 			authCfg.Run,
-			[]string{
-				fmt.Sprintf("PIRATE_TOKEN='%s'", token),
-				fmt.Sprintf("PIRATE_NAME='%s'", name),
+			map[string]string{
+				"PIRATE_TOKEN": token,
+				"PIRATE_NAME:": name,
 			},
 			logger,
+			false,
 		); err != nil {
 			return fmt.Errorf("command returned error: %w", err)
 		}
@@ -315,9 +316,9 @@ func (srv *Server) Do(handler *Handler, headers map[string]string, payload []byt
 		return
 	}
 
-	env := []string{
-		fmt.Sprintf("PIRATE_HEADERS=%s", buf.String()),
-		fmt.Sprintf("PIRATE_BODY='%s'", string(payload)),
+	env := map[string]string{
+		"PIRATE_HEADERS": buf.String(),
+		"PIRATE_BODY":    string(payload),
 	}
 
 	index := -1
@@ -339,7 +340,19 @@ func (srv *Server) Do(handler *Handler, headers map[string]string, payload []byt
 		ctx, cancel := context.WithTimeout(runCtx, DoTimeout)
 		defer cancel()
 
-		if err := runScript(ctx, "pirate-webhook-script-*", handler.Run, env, l); err != nil {
+		isBinary := false
+		for key, val := range headers {
+			if strings.EqualFold(key, "content-type") {
+				isBinary = val == "application/octet-stream"
+			}
+
+			// mask api token
+			if strings.EqualFold(key, "x-authorization") {
+				headers[key] = "******"
+			}
+		}
+
+		if err := runScript(ctx, "pirate-webhook-script-*", handler.Run, env, l, isBinary); err != nil {
 			l.Error("error running script", "error", err)
 		}
 

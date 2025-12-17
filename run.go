@@ -12,8 +12,8 @@ import (
 
 const tickInterval = 10 * time.Second
 
-func runScript(ctx context.Context, fname, contents string, env []string, l *slog.Logger) error {
-	name, err := writeScript(l, fname, contents)
+func runScript(ctx context.Context, fname, contents string, env map[string]string, l *slog.Logger, isBinary bool) error {
+	name, err := writeTmpFile(l, fname, contents)
 	if err != nil {
 		return err
 	}
@@ -21,10 +21,26 @@ func runScript(ctx context.Context, fname, contents string, env []string, l *slo
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	defer func() { cleanupFile(l, name) }()
+	defer cleanupFile(l, name)
 
 	cmd := exec.CommandContext(runCtx, "bash", name)
-	cmd.Env = append(cmd.Env, env...)
+
+	for key, val := range env {
+		value := val
+
+		if key == "PIRATE_BODY" && isBinary {
+			binName, err := writeTmpFile(l, "pirate-webhook-binary-*", val)
+			if err != nil {
+				return fmt.Errorf("could not write body: %w", err)
+			}
+
+			defer cleanupFile(l, binName)
+
+			value = binName
+		}
+
+		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", key, value))
+	}
 
 	stdout, stderr := newSafeBuffer(), newSafeBuffer()
 
@@ -48,6 +64,7 @@ func runScript(ctx context.Context, fname, contents string, env []string, l *slo
 		}
 	}()
 
+	defer flush(stdout, stderr, l)
 	if err := cmd.Wait(); err != nil {
 		code := 1
 
@@ -59,12 +76,10 @@ func runScript(ctx context.Context, fname, contents string, env []string, l *slo
 		return fmt.Errorf("failed (exit code=%d): %w", code, err)
 	}
 
-	flush(stdout, stderr, l)
-
 	return nil
 }
 
-func writeScript(l *slog.Logger, fname string, contents string) (string, error) {
+func writeTmpFile(l *slog.Logger, fname string, contents string) (string, error) {
 	fd, err := os.CreateTemp("", fname)
 	if err != nil {
 		return "", fmt.Errorf("could not create script: %w", err)
